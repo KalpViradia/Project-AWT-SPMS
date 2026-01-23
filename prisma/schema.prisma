@@ -1,0 +1,167 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model project_group {
+  project_group_id                             Int                    @id @default(autoincrement())
+  project_group_name                           String                 @db.VarChar(150)
+  project_type_id                              Int
+  guide_staff_name                             String?                @db.VarChar(150)
+  project_title                                String                 @db.VarChar(200)
+  project_area                                 String?                @db.VarChar(150)
+  project_description                          String?
+  project_objectives                           String?
+  project_methodology                          String?
+  project_expected_outcomes                    String?
+  average_cpi                                  Decimal?               @db.Decimal(4, 2)
+  convener_staff_id                            Int?
+  expert_staff_id                              Int?
+  guide_staff_id                               Int?
+  description                                  String?
+  status                                       String                 @default("pending") @db.VarChar(50)
+  proposal_submitted_at                        DateTime?              @db.Timestamp(6)
+  proposal_reviewed_at                         DateTime?              @db.Timestamp(6)
+  proposal_reviewed_by                         Int?
+  rejection_reason                             String?
+  proposal_file_path                           String?                @db.VarChar(512)
+  created_at                                   DateTime               @default(now()) @db.Timestamp(6)
+  modified_at                                  DateTime               @default(now()) @db.Timestamp(6)
+  staff_project_group_convener_staff_idTostaff staff?                 @relation("project_group_convener_staff_idTostaff", fields: [convener_staff_id], references: [staff_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_convener_staff")
+  staff_project_group_expert_staff_idTostaff   staff?                 @relation("project_group_expert_staff_idTostaff", fields: [expert_staff_id], references: [staff_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_expert_staff")
+  staff_project_group_guide_staff_idTostaff    staff?                 @relation("project_group_guide_staff_idTostaff", fields: [guide_staff_id], references: [staff_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_guide_staff")
+  staff_project_group_reviewed_byTostaff       staff?                 @relation("project_group_reviewed_byTostaff", fields: [proposal_reviewed_by], references: [staff_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_reviewed_by_staff")
+  project_type                                 project_type           @relation(fields: [project_type_id], references: [project_type_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_project_type")
+  project_group_member                         project_group_member[]
+  project_meeting                              project_meeting[]
+  weekly_report                                weekly_report[]
+  project_invitation                           project_invitation[]
+  project_document                             project_document[]
+}
+
+model project_document {
+  document_id       Int           @id @default(autoincrement())
+  project_group_id  Int
+  title             String        @db.VarChar(255)
+  file_path         String        @db.VarChar(512)
+  uploaded_at       DateTime      @default(now()) @db.Timestamp(6)
+  project_group     project_group @relation(fields: [project_group_id], references: [project_group_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_document_group")
+}
+
+model project_group_member {
+  project_group_member_id Int           @id @default(autoincrement())
+  project_group_id        Int
+  student_id              Int
+  is_group_leader         Boolean       @default(false)
+  student_cgpa            Decimal?      @db.Decimal(4, 2)
+  description             String?
+  created_at              DateTime      @default(now()) @db.Timestamp(6)
+  modified_at             DateTime      @default(now()) @db.Timestamp(6)
+  project_group           project_group @relation(fields: [project_group_id], references: [project_group_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_group")
+  student                 student       @relation(fields: [student_id], references: [student_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_student")
+
+  @@unique([project_group_id, student_id], map: "uq_group_student")
+}
+
+model project_meeting {
+  project_meeting_id         Int                          @id @default(autoincrement())
+  project_group_id           Int
+  guide_staff_id             Int
+  meeting_datetime           DateTime                     @db.Timestamp(6)
+  meeting_purpose            String?                      @db.VarChar(200)
+  meeting_location           String?                      @db.VarChar(150)
+  meeting_notes              String?
+  meeting_status             String?                      @db.VarChar(50)
+  meeting_status_description String?
+  meeting_status_datetime    DateTime?                    @db.Timestamp(6)
+  description                String?
+  created_at                 DateTime                     @default(now()) @db.Timestamp(6)
+  modified_at                DateTime                     @default(now()) @db.Timestamp(6)
+  project_group              project_group                @relation(fields: [project_group_id], references: [project_group_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_meeting_group")
+  staff                      staff                        @relation(fields: [guide_staff_id], references: [staff_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_meeting_guide")
+  project_meeting_attendance project_meeting_attendance[]
+}
+
+model project_meeting_attendance {
+  project_meeting_attendance_id Int             @id @default(autoincrement())
+  project_meeting_id            Int
+  student_id                    Int
+  is_present                    Boolean         @default(false)
+  attendance_remarks            String?         @db.VarChar(100)
+  description                   String?
+  created_at                    DateTime        @default(now()) @db.Timestamp(6)
+  modified_at                   DateTime        @default(now()) @db.Timestamp(6)
+  student                       student         @relation(fields: [student_id], references: [student_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_attendance_student")
+  project_meeting               project_meeting @relation(fields: [project_meeting_id], references: [project_meeting_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_meeting")
+
+  @@unique([project_meeting_id, student_id], map: "uq_meeting_student")
+}
+
+model project_type {
+  project_type_id   Int             @id @default(autoincrement())
+  project_type_name String          @unique @db.VarChar(100)
+  description       String?
+  created_at        DateTime        @default(now()) @db.Timestamp(6)
+  modified_at       DateTime        @default(now()) @db.Timestamp(6)
+  project_group     project_group[]
+}
+
+model staff {
+  staff_id                                             Int               @id @default(autoincrement())
+  staff_name                                           String            @db.VarChar(150)
+  phone                                                String?           @db.VarChar(15)
+  email                                                String?           @unique @db.VarChar(150)
+  password                                             String
+  role                                                 String            @default("faculty")
+  description                                          String?
+  created_at                                           DateTime          @default(now()) @db.Timestamp(6)
+  modified_at                                          DateTime          @default(now()) @db.Timestamp(6)
+  project_group_project_group_convener_staff_idTostaff project_group[]   @relation("project_group_convener_staff_idTostaff")
+  project_group_project_group_expert_staff_idTostaff   project_group[]   @relation("project_group_expert_staff_idTostaff")
+  project_group_project_group_guide_staff_idTostaff    project_group[]   @relation("project_group_guide_staff_idTostaff")
+  project_group_project_group_reviewed_byTostaff       project_group[]   @relation("project_group_reviewed_byTostaff")
+  project_meeting                                      project_meeting[]
+}
+
+model student {
+  student_id                 Int                          @id @default(autoincrement())
+  student_name               String                       @db.VarChar(150)
+  phone                      String?                      @db.VarChar(15)
+  email                      String?                      @unique @db.VarChar(150)
+  password                   String
+  role                       String                       @default("student")
+  description                String?
+  created_at                 DateTime                     @default(now()) @db.Timestamp(6)
+  modified_at                DateTime                     @default(now()) @db.Timestamp(6)
+  project_group_member       project_group_member[]
+  project_meeting_attendance project_meeting_attendance[]
+}
+
+model weekly_report {
+  report_id        Int           @id @default(autoincrement())
+  project_group_id Int
+  report_content   String
+  week_number      Int
+  status           String        @default("pending") @db.VarChar(50)
+  feedback         String?
+  submission_date  DateTime      @default(now()) @db.Timestamp(6)
+  created_at       DateTime      @default(now()) @db.Timestamp(6)
+  modified_at      DateTime      @default(now()) @db.Timestamp(6)
+  project_group    project_group @relation(fields: [project_group_id], references: [project_group_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_report_group")
+}
+
+model project_invitation {
+  invitation_id         Int           @id @default(autoincrement())
+  project_group_id      Int
+  invited_student_email String        @db.VarChar(150)
+  status                String        @default("pending") @db.VarChar(50)
+  created_at            DateTime      @default(now()) @db.Timestamp(6)
+  modified_at           DateTime      @default(now()) @db.Timestamp(6)
+  project_group         project_group @relation(fields: [project_group_id], references: [project_group_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_invitation_group")
+
+  @@unique([project_group_id, invited_student_email], map: "uq_group_email")
+}

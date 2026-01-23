@@ -1,0 +1,9 @@
+Starting check...
+Total students: 1
+Checking user: student@test.com
+User FOUND. ID: 1
+Stored Hash: $2b$10$QlFs/5CXdo8Ms...
+Password 'password123' match: false
+Password mismatch detected. Updating password...
+Password updated successfully.
+Verification match: true
