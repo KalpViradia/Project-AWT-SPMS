@@ -1,18 +1,30 @@
+"use client"
 
 import Link from "next/link"
-import { auth } from "@/auth"
+import { useSidebar } from "@/components/sidebar-provider"
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
 import {
     LayoutDashboard,
     Users,
     Calendar,
     Settings,
     BookOpen,
-    FileText
+    FileText,
+    ChevronLeft,
+    ChevronRight,
+    GraduationCap
 } from "lucide-react"
 
-export async function AppSidebar() {
-    const session = await auth()
-    const role = (session?.user as any)?.role || 'student'
+interface AppSidebarProps {
+    role: string | null | undefined
+}
+
+export function AppSidebar({ role = 'student' }: AppSidebarProps) {
+    const { isCollapsed, toggleSidebar } = useSidebar()
+
+    // Default role to student if null/undefined
+    const actualRole = role || 'student';
 
     const studentLinks = [
         { href: "/dashboard/student", label: "Overview", icon: LayoutDashboard },
@@ -34,31 +46,66 @@ export async function AppSidebar() {
     const adminLinks = [
         { href: "/dashboard/admin", label: "Overview", icon: LayoutDashboard },
         { href: "/dashboard/admin/users", label: "User Management", icon: Users },
+        { href: "/dashboard/admin/project-types", label: "Project Types", icon: BookOpen },
+        { href: "/dashboard/admin/academic-years", label: "Academic Years", icon: Calendar },
+        { href: "/dashboard/admin/departments", label: "Departments", icon: GraduationCap },
+        { href: "/dashboard/admin/reports", label: "Reports", icon: FileText },
         // { href: "/dashboard/admin/settings", label: "Settings", icon: Settings },
     ]
 
     let links = studentLinks;
-    if (role === 'faculty') links = facultyLinks;
-    if (role === 'admin') links = adminLinks;
+    if (actualRole === 'faculty') links = facultyLinks;
+    if (actualRole === 'admin') links = adminLinks;
 
     return (
-        <div className="flex h-full max-h-screen flex-col gap-2">
-            <div className="flex h-14 items-center border-b px-6 font-semibold">
-                SPMS
+        <div className="flex h-full max-h-screen flex-col gap-2 relative group">
+            <div className={cn(
+                "flex h-14 items-center border-b font-semibold",
+                isCollapsed ? "justify-center px-0" : "px-6"
+            )}>
+                {isCollapsed ? (
+                    <GraduationCap className="h-6 w-6" />
+                ) : (
+                    <span className="truncate">SPMS</span>
+                )}
             </div>
+
             <div className="flex-1 overflow-auto py-2">
-                <nav className="grid items-start px-4 text-sm font-medium">
+                <nav className="grid items-start px-2 text-sm font-medium">
                     {links.map((link, index) => (
                         <Link
                             key={index}
                             href={link.href}
-                            className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+                            className={cn(
+                                "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
+                                isCollapsed ? "justify-center px-2" : ""
+                            )}
+                            title={isCollapsed ? link.label : undefined}
                         >
-                            <link.icon className="h-4 w-4" />
-                            {link.label}
+                            <link.icon className="h-4 w-4 shrink-0" />
+                            {!isCollapsed && <span>{link.label}</span>}
                         </Link>
                     ))}
                 </nav>
+            </div>
+
+            {/* Collapse Toggle Button */}
+            <div className={cn(
+                "absolute -right-3 top-16 z-20 opacity-0 group-hover:opacity-100 transition-opacity",
+                isCollapsed && "opacity-100"
+            )}>
+                <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-6 w-6 rounded-full shadow-md border bg-background"
+                    onClick={toggleSidebar}
+                >
+                    {isCollapsed ? (
+                        <ChevronRight className="h-3 w-3" />
+                    ) : (
+                        <ChevronLeft className="h-3 w-3" />
+                    )}
+                </Button>
             </div>
         </div>
     )

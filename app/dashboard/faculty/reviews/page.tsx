@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import { updateReportFeedback } from "@/lib/actions"
 
 export default async function ReportReviewsPage() {
@@ -71,6 +72,11 @@ export default async function ReportReviewsPage() {
                                         </CardTitle>
                                         <CardDescription>
                                             Submitted on {new Date(report.submission_date).toLocaleDateString()}
+                                            {report.marks !== null && (
+                                                <span className="ml-2 text-green-600 font-medium">
+                                                    • Marks: {report.marks}/100
+                                                </span>
+                                            )}
                                         </CardDescription>
                                     </div>
                                     <Badge variant={report.status === 'pending' ? 'secondary' : 'default'}>
@@ -88,17 +94,31 @@ export default async function ReportReviewsPage() {
 
                                 <form action={updateReportFeedback} className="space-y-3 border-t pt-4">
                                     <input type="hidden" name="reportId" value={report.report_id} />
-                                    <div className="space-y-1">
-                                        <Label htmlFor={`feedback-${report.report_id}`}>Feedback</Label>
-                                        <Textarea
-                                            id={`feedback-${report.report_id}`}
-                                            name="feedback"
-                                            placeholder="Enter your feedback here..."
-                                            defaultValue={report.feedback || ""}
-                                        />
+                                    <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
+                                        <div className="space-y-1">
+                                            <Label htmlFor={`feedback-${report.report_id}`}>Feedback</Label>
+                                            <Textarea
+                                                id={`feedback-${report.report_id}`}
+                                                name="feedback"
+                                                placeholder="Enter your feedback here..."
+                                                defaultValue={report.feedback || ""}
+                                            />
+                                        </div>
+                                        <div className="space-y-1 sm:w-24">
+                                            <Label htmlFor={`marks-${report.report_id}`}>Marks (0-100)</Label>
+                                            <Input
+                                                id={`marks-${report.report_id}`}
+                                                name="marks"
+                                                type="number"
+                                                min="0"
+                                                max="100"
+                                                placeholder="—"
+                                                defaultValue={report.marks ?? ""}
+                                            />
+                                        </div>
                                     </div>
                                     <div className="flex gap-2 justify-end">
-                                        <Button type="submit" size="sm">Update Feedback</Button>
+                                        <Button type="submit" size="sm">Update Feedback & Marks</Button>
                                     </div>
                                 </form>
                             </CardContent>

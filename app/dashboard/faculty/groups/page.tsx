@@ -21,6 +21,7 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import { PendingGroupsList } from "@/components/faculty/pending-groups-list"
+import { FacultyGroupsExportClient } from "@/components/faculty/groups-export-client"
 
 export default async function FacultyGroupsPage() {
     const session = await auth()
@@ -54,11 +55,37 @@ export default async function FacultyGroupsPage() {
     const pendingGroups = allGroups.filter(g => g.status === 'pending')
     const activeGroups = allGroups.filter(g => g.status === 'approved')
 
+    // Prepare export data
+    const exportData = allGroups.map((group) => ({
+        groupName: group.project_group_name,
+        projectTitle: group.project_title,
+        projectType: group.project_type.project_type_name,
+        status: group.status,
+        memberCount: group.project_group_member.length,
+        members: group.project_group_member.map((m) => m.student.student_name).join(", "),
+        pendingReports: group.weekly_report.length,
+    }))
+
+    const exportColumns = [
+        { header: "Group Name", key: "groupName" },
+        { header: "Project Title", key: "projectTitle" },
+        { header: "Type", key: "projectType" },
+        { header: "Status", key: "status" },
+        { header: "Member Count", key: "memberCount" },
+        { header: "Members", key: "members" },
+        { header: "Pending Reports", key: "pendingReports" },
+    ]
+
     return (
         <div className="space-y-6">
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight">My Groups</h1>
-                <p className="text-muted-foreground">Manage project groups under your supervision.</p>
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight">My Groups</h1>
+                    <p className="text-muted-foreground">Manage project groups under your supervision.</p>
+                </div>
+                {allGroups.length > 0 && (
+                    <FacultyGroupsExportClient data={exportData} columns={exportColumns} />
+                )}
             </div>
 
             <PendingGroupsList groups={pendingGroups} />

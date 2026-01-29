@@ -1,36 +1,156 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 📊 Student Project Management System (SPMS)
 
-## Getting Started
+A comprehensive web-based platform for managing academic projects, designed to streamline collaboration between students, faculty, and administrators.
 
-First, run the development server:
+![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
+![React](https://img.shields.io/badge/React-19-blue?logo=react)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
+![Prisma](https://img.shields.io/badge/Prisma-7-green?logo=prisma)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-blue?logo=postgresql)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## ✨ Features
+
+### 👨‍🎓 Student Portal
+- **Project Group Management** – Create/join project groups with team invitations
+- **Proposal Submission** – Submit project proposals for faculty approval
+- **Weekly Reports** – Track progress with weekly report submissions
+- **Document Uploads** – Upload and manage project-related documents
+- **Meeting Schedule** – View scheduled meetings with guides
+- **Profile Management** – Update personal information and settings
+
+### 👨‍🏫 Faculty Portal
+- **Group Supervision** – Manage assigned project groups
+- **Proposal Review** – Review and approve/reject project proposals
+- **Meeting Management** – Schedule meetings and track attendance
+- **Grading System** – Assign marks for weekly reports and final evaluation
+- **Progress Tracking** – Monitor student progress and report submissions
+- **Export Data** – Export group data to Excel/PDF formats
+
+### 🔧 Admin Portal
+- **User Management** – Create and manage students, faculty, and admin accounts
+- **Master Configuration** – Manage Project Types, Academic Years, and Departments
+- **Reports & Analytics** – View comprehensive reports across all projects
+- **Data Export** – Export project data to Excel and PDF formats
+
+## 🛠️ Tech Stack
+
+| Category | Technologies |
+|----------|-------------|
+| **Framework** | Next.js 16 (App Router) |
+| **Frontend** | React 19, TypeScript, Tailwind CSS |
+| **UI Components** | Radix UI, shadcn/ui, Lucide Icons |
+| **Database** | PostgreSQL with Prisma ORM |
+| **Authentication** | NextAuth.js v5 (Auth.js) |
+| **Forms** | React Hook Form, Zod validation |
+| **Animations** | Framer Motion |
+| **Export** | jsPDF, xlsx |
+
+## 📁 Project Structure
+
+```
+project-tracker/
+├── app/                    # Next.js App Router pages
+│   ├── dashboard/
+│   │   ├── admin/          # Admin dashboard pages
+│   │   ├── faculty/        # Faculty dashboard pages
+│   │   └── student/        # Student dashboard pages
+│   └── api/                # API routes
+├── components/             # Reusable UI components
+│   ├── admin/              # Admin-specific components
+│   ├── faculty/            # Faculty-specific components
+│   ├── shared/             # Shared components
+│   └── ui/                 # shadcn/ui components
+├── lib/                    # Utility functions and server actions
+│   ├── actions.ts          # Server actions
+│   ├── admin-actions.ts    # Admin-specific actions
+│   └── prisma.ts           # Prisma client
+├── prisma/                 # Database schema and migrations
+└── public/                 # Static assets
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🚀 Getting Started
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Prerequisites
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Node.js 18+ 
+- PostgreSQL database
+- npm, yarn, pnpm, or bun
 
-## Learn More
+### Installation
 
-To learn more about Next.js, take a look at the following resources:
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/KalpViradia/Project-AWT-SPMS.git
+   cd project-tracker
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+3. **Set up environment variables**
+   
+   Create a `.env` file in the root directory:
+   ```env
+   DATABASE_URL="postgresql://user:password@localhost:5432/spms"
+   AUTH_SECRET="your-auth-secret"
+   ```
 
-## Deploy on Vercel
+4. **Set up the database**
+   ```bash
+   # Generate Prisma client
+   npx prisma generate
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+   # Run migrations
+   npx prisma migrate dev
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+   # (Optional) Seed the database
+   npm run prisma:seed
+   ```
+
+5. **Start the development server**
+   ```bash
+   npm run dev
+   ```
+
+6. **Open the application**
+   
+   Navigate to [http://localhost:3000](http://localhost:3000)
+
+## 📝 Available Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server |
+| `npm run build` | Build for production |
+| `npm run start` | Start production server |
+| `npm run lint` | Run ESLint |
+
+## 🗄️ Database Schema
+
+The system uses the following main entities:
+
+- **Users** – Students, Staff (Faculty), and Admins
+- **Project Groups** – Team-based projects with members
+- **Project Types** – Categories of projects (e.g., Mini Project, Major Project)
+- **Weekly Reports** – Progress reports submitted by students
+- **Project Meetings** – Scheduled meetings with attendance tracking
+- **Project Documents** – Uploaded files and documents
+- **Departments & Academic Years** – Organizational structure
+
+## 🔐 Authentication
+
+The system uses role-based access control with three user roles:
+
+| Role | Access Level |
+|------|--------------|
+| **Student** | Personal dashboard, group management, report submission |
+| **Faculty** | Group supervision, proposal review, grading |
+| **Admin** | Full system access, user management, configuration |
+
+## 📄 License
+
+This project is developed for academic purposes as part of the Advanced Web Technology course.
+
+---

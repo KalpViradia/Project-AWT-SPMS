@@ -314,6 +314,7 @@ export async function submitReport(formData: FormData) {
 const ReviewReportSchema = z.object({
     reportId: z.coerce.number(),
     feedback: z.string().min(1, "Feedback cannot be empty"),
+    marks: z.coerce.number().min(0).max(100).optional().nullable(),
     status: z.string().default("reviewed"),
 });
 
@@ -329,22 +330,27 @@ export async function updateReportFeedback(formData: FormData) {
         throw new Error("Unauthorized");
     }
 
+    const marksRaw = formData.get('marks');
+    const marks = marksRaw && marksRaw !== '' ? Number(marksRaw) : null;
+
     const validatedFields = ReviewReportSchema.safeParse({
         reportId: formData.get('reportId'),
         feedback: formData.get('feedback'),
+        marks: marks,
     });
 
     if (!validatedFields.success) {
         throw new Error('Invalid fields');
     }
 
-    const { reportId, feedback, status } = validatedFields.data;
+    const { reportId, feedback, marks: validatedMarks, status } = validatedFields.data;
 
     try {
         await prisma.weekly_report.update({
             where: { report_id: reportId },
             data: {
                 feedback: feedback,
+                marks: validatedMarks,
                 status: status,
                 modified_at: new Date()
             }

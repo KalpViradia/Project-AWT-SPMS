@@ -139,6 +139,11 @@ export default async function ReportsPage() {
                                             <Badge variant={report.status === 'reviewed' ? 'default' : 'secondary'}>
                                                 {report.status}
                                             </Badge>
+                                            {report.marks !== null && (
+                                                <Badge variant="outline" className="ml-auto bg-green-50 text-green-700 border-green-200">
+                                                    Marks: {report.marks}/100
+                                                </Badge>
+                                            )}
                                         </div>
                                         <p className="text-sm bg-muted/50 p-3 rounded-md">
                                             {report.feedback || "No written feedback provided."}
