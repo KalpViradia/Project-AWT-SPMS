@@ -32,7 +32,8 @@ export default async function SettingsPage() {
                     name: student.student_name,
                     email: student.email || '',
                     phone: student.phone,
-                    description: student.description
+                    description: student.description,
+                    skills: student.skills || []
                 }}
                 action={updateStudentProfile}
                 role="student"

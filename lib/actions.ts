@@ -80,6 +80,7 @@ const CreateGroupSchema = z.object({
   objectives: z.string().min(30, "Objectives must be at least 30 characters."),
   methodology: z.string().min(30, "Methodology must be at least 30 characters."),
   expectedOutcomes: z.string().min(30, "Expected outcomes must be at least 30 characters."),
+  projectSkills: z.string().optional(),
 });
 
 export async function createGroup(formData: FormData) {
@@ -105,13 +106,22 @@ export async function createGroup(formData: FormData) {
     objectives: formData.get('objectives'),
     methodology: formData.get('methodology'),
     expectedOutcomes: formData.get('expectedOutcomes'),
+    projectSkills: formData.get('projectSkills'),
   });
 
   if (!validatedFields.success) {
     throw new Error('Invalid fields');
   }
 
-  const { groupName, projectTitle, projectType, guideId, description, objectives, methodology, expectedOutcomes } = validatedFields.data;
+  const { groupName, projectTitle, projectType, guideId, description, objectives, methodology, expectedOutcomes, projectSkills } = validatedFields.data;
+
+  // Parse project skills
+  let projectSkillsArray: string[] = [];
+  if (projectSkills) {
+    try {
+      projectSkillsArray = JSON.parse(projectSkills);
+    } catch { projectSkillsArray = []; }
+  }
 
   // Check if student is already in a group
   const existingMember = await prisma.project_group_member.findFirst({
@@ -151,6 +161,7 @@ export async function createGroup(formData: FormData) {
                   project_objectives: objectives,
                   project_methodology: methodology,
                   project_expected_outcomes: expectedOutcomes,
+                  project_skills: projectSkillsArray,
                   proposal_file_path: proposalFilePath,
                   proposal_submitted_at: new Date(),
                   status: 'pending',
@@ -487,6 +498,7 @@ const UpdateStudentProfileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
   phone: z.string().optional(),
   description: z.string().optional(),
+  skills: z.string().optional(),
 });
 
 export async function updateStudentProfile(formData: FormData) {
@@ -507,13 +519,22 @@ export async function updateStudentProfile(formData: FormData) {
     name: formData.get('name'),
     phone: formData.get('phone'),
     description: formData.get('description'),
+    skills: formData.get('skills'),
   });
 
   if (!validatedFields.success) {
     throw new Error("Invalid fields");
   }
 
-  const { name, phone, description } = validatedFields.data;
+  const { name, phone, description, skills } = validatedFields.data;
+
+  // Parse skills JSON string to array
+  let skillsArray: string[] = [];
+  if (skills) {
+    try {
+      skillsArray = JSON.parse(skills);
+    } catch { skillsArray = []; }
+  }
 
   try {
     await prisma.student.update({
@@ -522,6 +543,7 @@ export async function updateStudentProfile(formData: FormData) {
         student_name: name,
         phone: phone,
         description: description,
+        skills: skillsArray,
         modified_at: new Date()
       }
     });
@@ -538,6 +560,7 @@ const UpdateFacultyProfileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
   phone: z.string().optional(),
   description: z.string().optional(),
+  skills: z.string().optional(),
 });
 
 export async function updateFacultyProfile(formData: FormData) {
@@ -558,13 +581,22 @@ export async function updateFacultyProfile(formData: FormData) {
     name: formData.get('name'),
     phone: formData.get('phone'),
     description: formData.get('description'),
+    skills: formData.get('skills'),
   });
 
   if (!validatedFields.success) {
     throw new Error("Invalid fields");
   }
 
-  const { name, phone, description } = validatedFields.data;
+  const { name, phone, description, skills } = validatedFields.data;
+
+  // Parse skills JSON string to array
+  let skillsArray: string[] = [];
+  if (skills) {
+    try {
+      skillsArray = JSON.parse(skills);
+    } catch { skillsArray = []; }
+  }
 
   try {
     await prisma.staff.update({
@@ -573,6 +605,7 @@ export async function updateFacultyProfile(formData: FormData) {
         staff_name: name,
         phone: phone,
         description: description,
+        skills: skillsArray,
         modified_at: new Date()
       }
     });
@@ -971,4 +1004,68 @@ export async function uploadDocument(formData: FormData) {
 
   revalidatePath('/dashboard/student/my-group');
   revalidatePath(`/dashboard/faculty/groups/${groupId}`);
+}
+
+// ============================================
+// FACULTY — SEARCH STUDENTS BY SKILLS
+// ============================================
+
+export async function searchStudentsBySkills(skills: string[]) {
+  const session = await auth();
+  if (!session || !session.user) {
+    throw new Error("Unauthorized");
+  }
+
+  const user = session.user as { id: string; role?: string | null };
+
+  if (user.role !== 'faculty' && user.role !== 'admin') {
+    throw new Error("Unauthorized");
+  }
+
+  if (!skills || skills.length === 0) {
+    return [];
+  }
+
+  try {
+    const students = await prisma.student.findMany({
+      where: {
+        skills: {
+          hasSome: skills,
+        },
+      },
+      select: {
+        student_id: true,
+        student_name: true,
+        email: true,
+        skills: true,
+        project_group_member: {
+          select: {
+            project_group: {
+              select: {
+                project_group_name: true,
+                project_title: true,
+              }
+            }
+          }
+        }
+      },
+      orderBy: { student_name: 'asc' },
+    });
+
+    return students.map(s => ({
+      student_id: s.student_id,
+      student_name: s.student_name,
+      email: s.email,
+      skills: s.skills,
+      group: s.project_group_member.length > 0
+        ? {
+            name: s.project_group_member[0].project_group.project_group_name,
+            project: s.project_group_member[0].project_group.project_title,
+          }
+        : null,
+    }));
+  } catch (error) {
+    console.error("Failed to search students:", error);
+    throw new Error("Failed to search students");
+  }
 }

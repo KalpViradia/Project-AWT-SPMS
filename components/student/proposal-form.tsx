@@ -1,26 +1,43 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { Upload } from "lucide-react"
+import { SkillsTagInput } from "@/components/ui/skills-tag-input"
 
 interface ProposalFormProps {
     projectTypes: { project_type_id: number; project_type_name: string }[];
-    guides: { staff_id: number; staff_name: string }[];
+    guides: { staff_id: number; staff_name: string; skills: string[] }[];
     action: (formData: FormData) => Promise<void>;
 }
 
 export function ProposalForm({ projectTypes, guides, action }: ProposalFormProps) {
     const [isPending, setIsPending] = useState(false);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [projectSkills, setProjectSkills] = useState<string[]>([]);
     const router = useRouter();
+
+    // Sort guides by skill overlap with project skills
+    const sortedGuides = useMemo(() => {
+        if (projectSkills.length === 0) return guides.map(g => ({ ...g, matchCount: 0 }));
+        const lowerProjectSkills = projectSkills.map(s => s.toLowerCase());
+        return guides
+            .map(guide => {
+                const matchCount = guide.skills.filter(s =>
+                    lowerProjectSkills.includes(s.toLowerCase())
+                ).length;
+                return { ...guide, matchCount };
+            })
+            .sort((a, b) => b.matchCount - a.matchCount);
+    }, [guides, projectSkills]);
 
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -105,15 +122,25 @@ export function ProposalForm({ projectTypes, guides, action }: ProposalFormProps
                                         <SelectValue placeholder="Select guide" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {guides.map((guide) => (
+                                        {sortedGuides.map((guide) => (
                                             <SelectItem key={guide.staff_id} value={guide.staff_id.toString()}>
                                                 {guide.staff_name}
+                                                {guide.matchCount > 0 && (
+                                                    <span className="ml-2 text-xs text-primary">({guide.matchCount} skill match{guide.matchCount > 1 ? 'es' : ''})</span>
+                                                )}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
                         </div>
+
+                        <SkillsTagInput
+                            name="projectSkills"
+                            label="Project Skills / Technologies *"
+                            placeholder="e.g. React, Python, Machine Learning"
+                            onChange={setProjectSkills}
+                        />
                     </div>
 
                     {/* Project Details */}

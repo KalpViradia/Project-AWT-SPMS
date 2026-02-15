@@ -38,7 +38,8 @@ export default async function FacultySettingsPage() {
                     name: staff.staff_name,
                     email: staff.email || '',
                     phone: staff.phone,
-                    description: staff.description
+                    description: staff.description,
+                    skills: staff.skills || []
                 }}
                 action={updateFacultyProfile}
                 role="faculty"

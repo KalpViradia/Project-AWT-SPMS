@@ -19,21 +19,37 @@ import {
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { assignGuide } from "@/lib/actions"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { toast } from "sonner"
 
 interface Staff {
     staff_id: number;
     staff_name: string;
+    skills: string[];
 }
 
 interface AssignGuideDialogProps {
     groupId: number;
     facultyList: Staff[];
+    projectSkills?: string[];
 }
 
-export function AssignGuideDialog({ groupId, facultyList }: AssignGuideDialogProps) {
+export function AssignGuideDialog({ groupId, facultyList, projectSkills = [] }: AssignGuideDialogProps) {
     const [open, setOpen] = useState(false);
+
+    // Sort faculty by skill overlap with project skills
+    const sortedFaculty = useMemo(() => {
+        if (projectSkills.length === 0) return facultyList.map(f => ({ ...f, matchCount: 0 }));
+        const lowerProjectSkills = projectSkills.map(s => s.toLowerCase());
+        return facultyList
+            .map(faculty => {
+                const matchCount = faculty.skills.filter(s =>
+                    lowerProjectSkills.includes(s.toLowerCase())
+                ).length;
+                return { ...faculty, matchCount };
+            })
+            .sort((a, b) => b.matchCount - a.matchCount);
+    }, [facultyList, projectSkills]);
 
     async function handleAction(formData: FormData) {
         try {
@@ -55,6 +71,7 @@ export function AssignGuideDialog({ groupId, facultyList }: AssignGuideDialogPro
                     <DialogTitle>Assign Project Guide</DialogTitle>
                     <DialogDescription>
                         Select a faculty member to guide your project.
+                        {projectSkills.length > 0 && " Guides with matching skills are shown first."}
                     </DialogDescription>
                 </DialogHeader>
                 <form action={handleAction}>
@@ -67,9 +84,14 @@ export function AssignGuideDialog({ groupId, facultyList }: AssignGuideDialogPro
                                     <SelectValue placeholder="Select faculty" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {facultyList.map((faculty) => (
+                                    {sortedFaculty.map((faculty) => (
                                         <SelectItem key={faculty.staff_id} value={faculty.staff_id.toString()}>
                                             {faculty.staff_name}
+                                            {faculty.matchCount > 0 && (
+                                                <span className="ml-2 text-xs text-primary">
+                                                    ({faculty.matchCount} skill match{faculty.matchCount > 1 ? 'es' : ''})
+                                                </span>
+                                            )}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>

@@ -18,6 +18,7 @@ model project_group {
   project_objectives                           String?
   project_methodology                          String?
   project_expected_outcomes                    String?
+  project_skills                               String[]               @default([])
   average_cpi                                  Decimal?               @db.Decimal(4, 2)
   convener_staff_id                            Int?
   expert_staff_id                              Int?
@@ -123,6 +124,7 @@ model staff {
   password                                             String
   role                                                 String            @default("faculty")
   description                                          String?
+  skills                                               String[]          @default([])
   created_at                                           DateTime          @default(now()) @db.Timestamp(6)
   modified_at                                          DateTime          @default(now()) @db.Timestamp(6)
   project_group_project_group_convener_staff_idTostaff project_group[]   @relation("project_group_convener_staff_idTostaff")
@@ -140,6 +142,7 @@ model student {
   password                   String
   role                       String                       @default("student")
   description                String?
+  skills                     String[]                     @default([])
   created_at                 DateTime                     @default(now()) @db.Timestamp(6)
   modified_at                DateTime                     @default(now()) @db.Timestamp(6)
   project_group_member       project_group_member[]

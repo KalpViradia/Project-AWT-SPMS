@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { useSidebar } from "@/components/sidebar-provider"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -13,7 +14,8 @@ import {
     FileText,
     ChevronLeft,
     ChevronRight,
-    GraduationCap
+    GraduationCap,
+    Search,
 } from "lucide-react"
 
 interface AppSidebarProps {
@@ -22,8 +24,8 @@ interface AppSidebarProps {
 
 export function AppSidebar({ role = 'student' }: AppSidebarProps) {
     const { isCollapsed, toggleSidebar } = useSidebar()
+    const pathname = usePathname()
 
-    // Default role to student if null/undefined
     const actualRole = role || 'student';
 
     const studentLinks = [
@@ -39,6 +41,7 @@ export function AppSidebar({ role = 'student' }: AppSidebarProps) {
         { href: "/dashboard/faculty", label: "Overview", icon: LayoutDashboard },
         { href: "/dashboard/faculty/groups", label: "Project Groups", icon: Users },
         { href: "/dashboard/faculty/reviews", label: "Reviews", icon: BookOpen },
+        { href: "/dashboard/faculty/find-students", label: "Find Students", icon: Search },
         { href: "/dashboard/faculty/schedule", label: "Schedule", icon: Calendar },
         { href: "/dashboard/faculty/settings", label: "Settings", icon: Settings },
     ]
@@ -50,7 +53,6 @@ export function AppSidebar({ role = 'student' }: AppSidebarProps) {
         { href: "/dashboard/admin/academic-years", label: "Academic Years", icon: Calendar },
         { href: "/dashboard/admin/departments", label: "Departments", icon: GraduationCap },
         { href: "/dashboard/admin/reports", label: "Reports", icon: FileText },
-        // { href: "/dashboard/admin/settings", label: "Settings", icon: Settings },
     ]
 
     let links = studentLinks;
@@ -72,20 +74,27 @@ export function AppSidebar({ role = 'student' }: AppSidebarProps) {
 
             <div className="flex-1 overflow-auto py-2">
                 <nav className="grid items-start px-2 text-sm font-medium">
-                    {links.map((link, index) => (
-                        <Link
-                            key={index}
-                            href={link.href}
-                            className={cn(
-                                "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
-                                isCollapsed ? "justify-center px-2" : ""
-                            )}
-                            title={isCollapsed ? link.label : undefined}
-                        >
-                            <link.icon className="h-4 w-4 shrink-0" />
-                            {!isCollapsed && <span>{link.label}</span>}
-                        </Link>
-                    ))}
+                    {links.map((link, index) => {
+                        const isActive = pathname === link.href ||
+                            (link.href !== `/dashboard/${actualRole}` && pathname.startsWith(link.href + '/'))
+                        return (
+                            <Link
+                                key={index}
+                                href={link.href}
+                                className={cn(
+                                    "flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary",
+                                    isCollapsed ? "justify-center px-2" : "",
+                                    isActive
+                                        ? "bg-muted text-primary"
+                                        : "text-muted-foreground"
+                                )}
+                                title={isCollapsed ? link.label : undefined}
+                            >
+                                <link.icon className="h-4 w-4 shrink-0" />
+                                {!isCollapsed && <span>{link.label}</span>}
+                            </Link>
+                        )
+                    })}
                 </nav>
             </div>
 

@@ -84,6 +84,16 @@ export default async function ProfilePage() {
                                 <Label className="text-muted-foreground">Description</Label>
                                 <div className="font-medium">{student.description || "No description"}</div>
                             </div>
+                            {student.skills && student.skills.length > 0 && (
+                                <div className="grid gap-1">
+                                    <Label className="text-muted-foreground">Skills</Label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {student.skills.map((skill, i) => (
+                                            <Badge key={i} variant="secondary">{skill}</Badge>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </CardContent>
                 </Card>

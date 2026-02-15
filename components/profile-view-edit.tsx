@@ -6,6 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { Badge } from "@/components/ui/badge"
+import { SkillsTagInput } from "@/components/ui/skills-tag-input"
 import { Edit2, X } from "lucide-react"
 
 interface ProfileData {
@@ -13,6 +15,7 @@ interface ProfileData {
     email: string;
     phone?: string | null;
     description?: string | null;
+    skills?: string[];
 }
 
 interface ProfileViewEditProps {
@@ -89,6 +92,16 @@ export function ProfileViewEdit({ initialData, action, role }: ProfileViewEditPr
                         <div className="space-y-2">
                             <Label className="text-sm font-medium text-muted-foreground">Bio / Description</Label>
                             <p className="text-sm whitespace-pre-wrap">{initialData.description}</p>
+                        </div>
+                    )}
+                    {initialData.skills && initialData.skills.length > 0 && (
+                        <div className="space-y-2">
+                            <Label className="text-sm font-medium text-muted-foreground">Skills</Label>
+                            <div className="flex flex-wrap gap-2">
+                                {initialData.skills.map((skill, i) => (
+                                    <Badge key={i} variant="secondary">{skill}</Badge>
+                                ))}
+                            </div>
                         </div>
                     )}
                 </CardContent>
@@ -179,6 +192,12 @@ export function ProfileViewEdit({ initialData, action, role }: ProfileViewEditPr
                             rows={4}
                         />
                     </div>
+
+                    <SkillsTagInput
+                        name="skills"
+                        label="Skills"
+                        initialSkills={initialData.skills || []}
+                    />
 
                     <div className="flex gap-2">
                         <Button type="submit" disabled={isPending}>

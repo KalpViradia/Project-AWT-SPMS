@@ -5,6 +5,7 @@ import { RedirectType, redirect } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 
@@ -79,6 +80,16 @@ export default async function FacultyProfilePage() {
                                 <Label className="text-muted-foreground">Description</Label>
                                 <div className="font-medium">{staff.description || "No description"}</div>
                             </div>
+                            {staff.skills && staff.skills.length > 0 && (
+                                <div className="grid gap-1">
+                                    <Label className="text-muted-foreground">Skills</Label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {staff.skills.map((skill, i) => (
+                                            <Badge key={i} variant="secondary">{skill}</Badge>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </CardContent>
                 </Card>

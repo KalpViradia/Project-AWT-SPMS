@@ -12,7 +12,6 @@ import {
     DropdownMenuItem,
     DropdownMenuLabel,
     DropdownMenuSeparator,
-    DropdownMenuShortcut,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { auth, signOut } from "@/auth"
@@ -56,13 +55,11 @@ export async function UserNav() {
                     <DropdownMenuItem asChild>
                         <Link href={`/dashboard/${(user as any).role || 'student'}/profile`} className="flex justify-between w-full cursor-pointer">
                             Profile
-                            <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
                         </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                         <Link href={`/dashboard/${(user as any).role || 'student'}/settings`} className="flex justify-between w-full cursor-pointer">
                             Settings
-                            <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
                         </Link>
                     </DropdownMenuItem>
                 </DropdownMenuGroup>
@@ -74,7 +71,6 @@ export async function UserNav() {
                     }} className="w-full">
                         <button type="submit" className="w-full text-left">Log out</button>
                     </form>
-                    <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>
                 </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>

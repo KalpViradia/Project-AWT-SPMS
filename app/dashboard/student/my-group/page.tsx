@@ -77,7 +77,8 @@ export default async function MyGroupPage() {
     // CREATE GROUP FORM
     const projectTypes = await prisma.project_type.findMany()
     const facultyList = await prisma.staff.findMany({
-        where: { role: 'faculty' }
+        where: { role: 'faculty' },
+        select: { staff_id: true, staff_name: true, skills: true }
     })
 
     if (group) {
@@ -96,6 +97,7 @@ export default async function MyGroupPage() {
                                     <AssignGuideDialog
                                         groupId={group.project_group_id}
                                         facultyList={facultyList}
+                                        projectSkills={group.project_skills || []}
                                     />
                                 )}
                             </>
@@ -168,6 +170,16 @@ export default async function MyGroupPage() {
                                     </div>
                                 </div>
                             </div>
+                            {group.project_skills && group.project_skills.length > 0 && (
+                                <div className="pt-4 border-t">
+                                    <div className="text-muted-foreground text-sm mb-2">Project Skills</div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {group.project_skills.map((skill: string, i: number) => (
+                                            <Badge key={i} variant="outline">{skill}</Badge>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                             {(group.project_objectives || group.project_description) && (
                                 <div className="pt-4 border-t">
                                     <Button variant="outline" size="sm" className="w-full" asChild>
