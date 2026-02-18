@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
 import { signIn, signOut } from "next-auth/react"
 import { useSidebar } from "@/components/sidebar-provider"
+import { Keyboard } from "lucide-react"
 import {
     Dialog,
     DialogContent,
@@ -159,6 +160,21 @@ export function KeyboardShortcutsProvider({ role, children }: KeyboardShortcutsP
     return (
         <>
             {children}
+
+            {/* Floating shortcut trigger button */}
+            <button
+                onClick={() => setOpen(true)}
+                className="fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-full border border-border bg-background/80 backdrop-blur-sm px-3 py-2 text-xs text-muted-foreground shadow-lg hover:text-foreground hover:border-primary/50 hover:shadow-xl transition-all duration-200 group"
+                title="Keyboard shortcuts (Ctrl + /)"
+            >
+                <Keyboard className="h-4 w-4 group-hover:text-primary transition-colors" />
+                <span className="hidden sm:inline">
+                    <kbd className="inline-flex items-center rounded border bg-muted px-1 py-0.5 font-mono text-[10px]">Ctrl</kbd>
+                    {" "}
+                    <kbd className="inline-flex items-center rounded border bg-muted px-1 py-0.5 font-mono text-[10px]">/</kbd>
+                </span>
+            </button>
+
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden">
                     <DialogHeader className="px-5 pt-5 pb-3">
@@ -196,3 +212,4 @@ export function KeyboardShortcutsProvider({ role, children }: KeyboardShortcutsP
         </>
     )
 }
+

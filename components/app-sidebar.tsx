@@ -16,6 +16,8 @@ import {
     ChevronRight,
     GraduationCap,
     Search,
+    FolderKanban,
+    CalendarDays,
 } from "lucide-react"
 
 interface AppSidebarProps {
@@ -49,10 +51,13 @@ export function AppSidebar({ role = 'student' }: AppSidebarProps) {
     const adminLinks = [
         { href: "/dashboard/admin", label: "Overview", icon: LayoutDashboard },
         { href: "/dashboard/admin/users", label: "User Management", icon: Users },
+        { href: "/dashboard/admin/all-groups", label: "All Groups", icon: FolderKanban },
         { href: "/dashboard/admin/project-types", label: "Project Types", icon: BookOpen },
         { href: "/dashboard/admin/academic-years", label: "Academic Years", icon: Calendar },
         { href: "/dashboard/admin/departments", label: "Departments", icon: GraduationCap },
+        { href: "/dashboard/admin/schedules", label: "All Meetings", icon: CalendarDays },
         { href: "/dashboard/admin/reports", label: "Reports", icon: FileText },
+        { href: "/dashboard/admin/settings", label: "Settings", icon: Settings },
     ]
 
     let links = studentLinks;
