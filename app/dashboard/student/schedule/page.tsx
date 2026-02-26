@@ -3,7 +3,7 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { RedirectType, redirect } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Calendar as CalendarIcon, MapPin, Clock } from "lucide-react"
+import { Calendar as CalendarIcon, MapPin, Clock, BarChart3, CheckCircle, XCircle } from "lucide-react"
 import { format } from "date-fns"
 
 export default async function SchedulePage() {
@@ -71,12 +71,69 @@ export default async function SchedulePage() {
         }
     })
 
+    // ── Attendance Analytics ──
+    const completedMeetings = meetings.filter(
+        (m) => m.project_meeting_attendance.length > 0
+    )
+    const presentCount = completedMeetings.filter(
+        (m) => m.project_meeting_attendance[0]?.is_present
+    ).length
+    const absentCount = completedMeetings.length - presentCount
+    const attendanceRate = completedMeetings.length > 0
+        ? Math.round((presentCount / completedMeetings.length) * 100)
+        : 0
+
     return (
         <div className="flex flex-col gap-6">
             <div>
                 <h1 className="text-3xl font-bold tracking-tight">Schedule</h1>
                 <p className="text-muted-foreground">Upcoming meetings and reviews for {group.project_group_name}.</p>
             </div>
+
+            {/* ── Attendance Analytics ── */}
+            <div className="grid gap-4 sm:grid-cols-3">
+                <Card>
+                    <CardContent className="pt-6 flex items-center gap-4">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-500/10 text-blue-500">
+                            <BarChart3 className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <p className="text-2xl font-bold">{meetings.length}</p>
+                            <p className="text-xs text-muted-foreground">Total Meetings</p>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="pt-6 flex items-center gap-4">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-500/10 text-green-500">
+                            <CheckCircle className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <p className="text-2xl font-bold">{attendanceRate}%</p>
+                            <p className="text-xs text-muted-foreground">Attendance Rate ({presentCount}/{completedMeetings.length})</p>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="pt-6 flex items-center gap-4">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/10 text-red-500">
+                            <XCircle className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <p className="text-2xl font-bold">{absentCount}</p>
+                            <p className="text-xs text-muted-foreground">Absences</p>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+            {completedMeetings.length > 0 && (
+                <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    <div
+                        className="h-full rounded-full bg-green-500 transition-all"
+                        style={{ width: `${attendanceRate}%` }}
+                    />
+                </div>
+            )}
 
             <div className="space-y-4">
                 {meetings.length === 0 ? (

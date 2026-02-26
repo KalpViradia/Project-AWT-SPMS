@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
+import { createNotification } from '@/lib/notification-actions';
 import bcrypt from 'bcryptjs';
 
 // ============================================
@@ -314,6 +315,19 @@ export async function submitReport(formData: FormData) {
                 modified_at: new Date(),
             }
         });
+
+        // Notify faculty guide
+        if (group.guide_staff_id) {
+            try {
+                await createNotification({
+                    userId: group.guide_staff_id,
+                    userRole: 'faculty',
+                    title: 'New Report Submitted',
+                    message: `Week ${weekNumber} report submitted by ${group.project_group_name}.`,
+                    link: '/dashboard/faculty/reviews',
+                });
+            } catch (e) { /* notification failure should not break main action */ }
+        }
     } catch (error) {
         console.error("Failed to submit report:", error);
         throw new Error("Failed to submit report");
@@ -357,15 +371,29 @@ export async function updateReportFeedback(formData: FormData) {
     const { reportId, feedback, marks: validatedMarks, status } = validatedFields.data;
 
     try {
-        await prisma.weekly_report.update({
+        const report = await prisma.weekly_report.update({
             where: { report_id: reportId },
             data: {
                 feedback: feedback,
                 marks: validatedMarks,
                 status: status,
                 modified_at: new Date()
-            }
+            },
+            include: { project_group: { include: { project_group_member: true } } }
         });
+
+        // Notify all group members about the feedback
+        try {
+            for (const member of report.project_group.project_group_member) {
+                await createNotification({
+                    userId: member.student_id,
+                    userRole: 'student',
+                    title: 'Report Reviewed',
+                    message: `Your Week ${report.week_number} report has been reviewed${validatedMarks ? ` — Marks: ${validatedMarks}/100` : ''}.`,
+                    link: '/dashboard/student/reports',
+                });
+            }
+        } catch (e) { /* notification failure should not break main action */ }
     } catch (error) {
         console.error("Failed to update report feedback:", error);
         throw new Error("Failed to update report feedback");
@@ -425,6 +453,22 @@ export async function scheduleMeeting(formData: FormData) {
                 modified_at: new Date(),
             }
         });
+
+        // Notify all group members about the new meeting
+        try {
+            const members = await prisma.project_group_member.findMany({
+                where: { project_group_id: projectGroupId },
+            });
+            for (const member of members) {
+                await createNotification({
+                    userId: member.student_id,
+                    userRole: 'student',
+                    title: 'New Meeting Scheduled',
+                    message: `A meeting has been scheduled for ${new Date(meetingDate).toLocaleDateString()}${meetingPurpose ? `: ${meetingPurpose}` : ''}.`,
+                    link: '/dashboard/student/schedule',
+                });
+            }
+        } catch (e) { /* notification failure should not break main action */ }
     } catch (error) {
         console.error("Failed to schedule meeting:", error);
         throw new Error("Failed to schedule meeting");
@@ -817,6 +861,18 @@ export async function inviteMember(formData: FormData) {
         modified_at: new Date(),
       }
     });
+
+    // Notify the invited student
+    try {
+      const group = await prisma.project_group.findUnique({ where: { project_group_id: membership.project_group_id } });
+      await createNotification({
+          userId: invitedStudent.student_id,
+          userRole: 'student',
+          title: 'Group Invitation',
+          message: `You have been invited to join "${group?.project_group_name || 'a project group'}".`,
+          link: '/dashboard/student/my-group',
+      });
+    } catch (e) { /* notification failure should not break main action */ }
   } catch (error) {
     console.error("Failed to invite member:", error);
     throw new Error("Failed to send invitation. Check if already invited.");

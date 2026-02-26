@@ -10,6 +10,7 @@ import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Eye, EyeOff } from "lucide-react"
+import { ModeToggle } from "@/components/mode-toggle"
 
 export default function SignupPage() {
     const [isPending, setIsPending] = useState(false)
@@ -52,7 +53,10 @@ export default function SignupPage() {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4 relative">
+            <div className="absolute top-4 right-4">
+                <ModeToggle />
+            </div>
             <div className="w-full max-w-md">
                 <div className="mb-6">
                     <Button variant="ghost" asChild>

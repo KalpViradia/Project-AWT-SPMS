@@ -1,6 +1,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { CreateStaffForm } from "@/components/admin/create-staff-form"
+import { PasswordResetGenerator } from "@/components/admin/password-reset-generator"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Info } from "lucide-react"
 
@@ -30,6 +31,18 @@ export default function UserManagementPage() {
                 </CardHeader>
                 <CardContent>
                     <CreateStaffForm />
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Password Reset</CardTitle>
+                    <CardDescription>
+                        Generate a one-time password reset link for a student or faculty member.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <PasswordResetGenerator />
                 </CardContent>
             </Card>
         </div>

@@ -10,12 +10,13 @@ export const authConfig = {
       const isLoggedIn = !!auth?.user;
       const isOnDashboard = nextUrl.pathname.startsWith('/dashboard');
       const isOnLogin = nextUrl.pathname.startsWith('/login');
+      const isOnHome = nextUrl.pathname === '/';
 
       if (isOnDashboard) {
         if (isLoggedIn) return true;
         return false; // Redirect unauthenticated users to login page
-      } else if (isLoggedIn && isOnLogin) {
-        // Redirect to specific dashboard based on role
+      } else if (isLoggedIn && (isOnLogin || isOnHome)) {
+        // Redirect logged-in users to their role-based dashboard
         const role = (auth.user as any).role;
         if (role === 'student') return Response.redirect(new URL('/dashboard/student', nextUrl));
         if (role === 'faculty') return Response.redirect(new URL('/dashboard/faculty', nextUrl));

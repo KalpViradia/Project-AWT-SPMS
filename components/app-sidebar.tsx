@@ -18,6 +18,8 @@ import {
     Search,
     FolderKanban,
     CalendarDays,
+    Clock,
+    MessageSquare,
 } from "lucide-react"
 
 interface AppSidebarProps {
@@ -36,6 +38,8 @@ export function AppSidebar({ role = 'student' }: AppSidebarProps) {
         { href: "/dashboard/student/project-details", label: "Project Details", icon: BookOpen },
         { href: "/dashboard/student/schedule", label: "Schedule", icon: Calendar },
         { href: "/dashboard/student/reports", label: "Reports", icon: FileText },
+        { href: "/dashboard/student/timeline", label: "Timeline", icon: Clock },
+        { href: "/dashboard/student/discussion", label: "Discussion", icon: MessageSquare },
         { href: "/dashboard/student/settings", label: "Settings", icon: Settings },
     ]
 
@@ -45,6 +49,7 @@ export function AppSidebar({ role = 'student' }: AppSidebarProps) {
         { href: "/dashboard/faculty/reviews", label: "Reviews", icon: BookOpen },
         { href: "/dashboard/faculty/find-students", label: "Find Students", icon: Search },
         { href: "/dashboard/faculty/schedule", label: "Schedule", icon: Calendar },
+        { href: "/dashboard/faculty/discussion", label: "Discussion", icon: MessageSquare },
         { href: "/dashboard/faculty/settings", label: "Settings", icon: Settings },
     ]
 
