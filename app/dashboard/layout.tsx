@@ -17,7 +17,7 @@ export default async function DashboardLayout({
     const userId = parseInt((session?.user as any)?.id || "0")
 
     const getDashboardTitle = (role: string) => {
-        if (!role) return "Project Tracker"
+        if (!role) return "Studionex"
         const formattedRole = role.charAt(0).toUpperCase() + role.slice(1)
         return `${formattedRole} Dashboard`
     }

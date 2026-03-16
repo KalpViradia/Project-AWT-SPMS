@@ -31,7 +31,6 @@ export default async function AdminReportsPage() {
             project_type: true,
             staff_project_group_guide_staff_idTostaff: true,
             department: true,
-            academic_year: true,
             project_group_member: {
                 include: {
                     student: true,
@@ -80,7 +79,7 @@ export default async function AdminReportsPage() {
             projectType: project.project_type.project_type_name,
             guide: project.staff_project_group_guide_staff_idTostaff?.staff_name || "Not Assigned",
             department: project.department?.department_name || "—",
-            academicYear: project.academic_year?.year_name || "—",
+            academicYear: "—",
             status: project.status,
             memberCount: project.project_group_member.length,
             members: project.project_group_member.map((m) => m.student.student_name).join(", "),

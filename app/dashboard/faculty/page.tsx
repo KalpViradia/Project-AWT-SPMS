@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { CalendarDays, Users, BookCheck, AlertCircle, ArrowRight } from "lucide-react"
+import { getActivityLogs, ActivityEvent } from "@/lib/activity-actions"
+import { ActivityTimeline } from "@/components/shared/activity-timeline"
 
 export default async function FacultyDashboard() {
     const session = await auth()
@@ -60,6 +62,11 @@ export default async function FacultyDashboard() {
             status: 'pending'
         }
     })
+
+    // Fetch activities for all groups the faculty is guiding
+    const groupActivitiesPromises = groups.map(g => getActivityLogs(g.project_group_id, 3))
+    const groupActivitiesResults = await Promise.all(groupActivitiesPromises)
+    const allRecentActivities = groupActivitiesResults.flat().sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 8)
 
 
     return (
@@ -169,7 +176,7 @@ export default async function FacultyDashboard() {
                             Quick access to management tasks.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="grid gap-4">
+                    <CardContent className="grid gap-4 pb-0">
                         <Button variant="outline" className="w-full justify-between" asChild>
                             <Link href="/dashboard/faculty/reviews">
                                 Review Recent Reports <ArrowRight className="ml-2 h-4 w-4" />
@@ -180,6 +187,12 @@ export default async function FacultyDashboard() {
                                 Schedule Group Meeting <ArrowRight className="ml-2 h-4 w-4" />
                             </Link>
                         </Button>
+                    </CardContent>
+                    <CardHeader className="pt-6 pb-2">
+                        <CardTitle className="text-sm">Global Activity Feed</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <ActivityTimeline events={allRecentActivities} />
                     </CardContent>
                 </Card>
             </div>

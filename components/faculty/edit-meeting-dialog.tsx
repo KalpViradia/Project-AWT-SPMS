@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input"
 import { updateMeeting } from "@/lib/actions"
 import { toast } from "sonner"
 import { Pencil } from "lucide-react"
+import { DateTimePicker } from "@/components/ui/date-time-picker"
 
 interface EditMeetingDialogProps {
     meeting: {
@@ -77,11 +78,10 @@ export function EditMeetingDialog({ meeting }: EditMeetingDialogProps) {
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="edit-meetingDate">Date & Time</Label>
-                        <Input
-                            id="edit-meetingDate"
+                        <DateTimePicker
                             name="meetingDate"
-                            type="datetime-local"
-                            defaultValue={formattedDate}
+                            value={meeting.meeting_datetime.toString()}
+                            placeholder="Select meeting date & time"
                             required
                         />
                     </div>

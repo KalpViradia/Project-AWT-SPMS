@@ -10,17 +10,14 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import { assignGuide } from "@/lib/actions"
 import { useMemo, useState } from "react"
 import { toast } from "sonner"
+import { Check } from "lucide-react"
+import { SearchSelect } from "@/components/ui/search-select"
+import { cn } from "@/lib/utils"
 
 interface Staff {
     staff_id: number;
@@ -36,6 +33,8 @@ interface AssignGuideDialogProps {
 
 export function AssignGuideDialog({ groupId, facultyList, projectSkills = [] }: AssignGuideDialogProps) {
     const [open, setOpen] = useState(false);
+    const [guideOpen, setGuideOpen] = useState(false);
+    const [guideValue, setGuideValue] = useState("");
 
     // Sort faculty by skill overlap with project skills
     const sortedFaculty = useMemo(() => {
@@ -77,25 +76,31 @@ export function AssignGuideDialog({ groupId, facultyList, projectSkills = [] }: 
                 <form action={handleAction}>
                     <input type="hidden" name="groupId" value={groupId} />
                     <div className="grid gap-4 py-4">
-                        <div className="space-y-2">
+                        <div className="space-y-2 flex flex-col">
                             <Label htmlFor="guideId">Select Guide</Label>
-                            <Select name="guideId" required>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select faculty" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {sortedFaculty.map((faculty) => (
-                                        <SelectItem key={faculty.staff_id} value={faculty.staff_id.toString()}>
-                                            {faculty.staff_name}
-                                            {faculty.matchCount > 0 && (
-                                                <span className="ml-2 text-xs text-primary">
-                                                    ({faculty.matchCount} skill match{faculty.matchCount > 1 ? 'es' : ''})
-                                                </span>
-                                            )}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <SearchSelect
+                                items={sortedFaculty.map(f => ({
+                                    staff_id: f.staff_id,
+                                    staff_name: f.staff_name,
+                                    matchCount: f.matchCount,
+                                    label: f.staff_name,
+                                    value: f.staff_id.toString()
+                                }))}
+                                value={guideValue}
+                                onValueChange={setGuideValue}
+                                placeholder="Search and select faculty..."
+                                name="guideId"
+                                renderItem={(item) => (
+                                    <div className="flex flex-col">
+                                        <span className="font-medium">{item.staff_name}</span>
+                                        {item.matchCount > 0 && (
+                                            <span className="text-[10px] text-primary">
+                                                {item.matchCount} skill match{item.matchCount > 1 ? 'es' : ''}
+                                            </span>
+                                        )}
+                                    </div>
+                                )}
+                            />
                         </div>
                     </div>
                     <DialogFooter>

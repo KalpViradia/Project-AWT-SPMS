@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { createTask, updateTask } from "@/lib/task-actions"
 import { Plus, Pencil, Loader2 } from "lucide-react"
+import { DateTimePicker } from "@/components/ui/date-time-picker"
 
 type TaskData = {
     task_id: number
@@ -181,11 +182,12 @@ export function TaskCardDialog({
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="task-due">Due Date</Label>
-                            <Input
-                                id="task-due"
-                                type="date"
+                            <DateTimePicker
                                 value={dueDate}
-                                onChange={(e) => setDueDate(e.target.value)}
+                                onChange={setDueDate}
+                                showTime={false}
+                                placeholder="Pick due date"
+                                className="w-full"
                             />
                         </div>
                     </div>

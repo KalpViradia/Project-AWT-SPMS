@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { createMilestone, updateMilestone } from "@/lib/milestone-actions"
 import { Plus, Pencil, Loader2 } from "lucide-react"
+import { DateTimePicker } from "@/components/ui/date-time-picker"
 
 const COLOR_PALETTE = [
     "#3b82f6", // blue
@@ -82,6 +83,11 @@ export function MilestoneFormDialog({
         e.preventDefault()
         setError(null)
 
+        if (new Date(endDate) < new Date(startDate)) {
+            setError("End date cannot be earlier than start date.")
+            return
+        }
+
         const formData = new FormData()
         if (isEditing) {
             formData.set("milestoneId", String(milestone!.milestone_id))
@@ -145,9 +151,9 @@ export function MilestoneFormDialog({
                     </DialogDescription>
                 </DialogHeader>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-4 pt-4">
                     {error && (
-                        <div className="text-sm text-destructive bg-destructive/10 p-2 rounded">
+                        <div className="text-sm font-medium text-destructive bg-destructive/10 p-3 rounded-md">
                             {error}
                         </div>
                     )}
@@ -166,22 +172,21 @@ export function MilestoneFormDialog({
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="milestone-start">Start Date</Label>
-                            <Input
-                                id="milestone-start"
-                                type="date"
+                            <DateTimePicker
                                 value={startDate}
-                                onChange={(e) => setStartDate(e.target.value)}
+                                onChange={setStartDate}
+                                showTime={false}
+                                placeholder="Pick start date"
                                 required
                             />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="milestone-end">End Date</Label>
-                            <Input
-                                id="milestone-end"
-                                type="date"
+                            <DateTimePicker
                                 value={endDate}
-                                onChange={(e) => setEndDate(e.target.value)}
-                                min={startDate}
+                                onChange={setEndDate}
+                                showTime={false}
+                                placeholder="Pick end date"
                                 required
                             />
                         </div>

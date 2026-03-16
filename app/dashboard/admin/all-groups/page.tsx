@@ -1,8 +1,10 @@
+import React from "react"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { RedirectType, redirect } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
     Table,
     TableBody,
@@ -11,7 +13,12 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
+import { SearchSelect } from "@/components/ui/search-select"
+import { AcademicFilterSelector } from "@/components/shared/academic-filter-selector"
 import { format } from "date-fns"
+import { Button } from "@/components/ui/button"
+import { Check, Filter, X } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 export default async function AllGroupsPage({
     searchParams,
@@ -23,33 +30,37 @@ export default async function AllGroupsPage({
     const userRole = (session.user as { role?: string }).role
     if (userRole !== "admin") redirect("/", RedirectType.replace)
 
-    const params = await searchParams
-    const statusFilter = typeof params.status === "string" ? params.status : undefined
-    const deptFilter = typeof params.department === "string" ? parseInt(params.department) : undefined
-    const yearFilter = typeof params.year === "string" ? parseInt(params.year) : undefined
-    const typeFilter = typeof params.type === "string" ? parseInt(params.type) : undefined
-
-    const [groups, departments, academicYears, projectTypes] = await Promise.all([
-        prisma.project_group.findMany({
-            where: {
-                ...(statusFilter ? { status: statusFilter } : {}),
-                ...(deptFilter ? { department_id: deptFilter } : {}),
-                ...(yearFilter ? { academic_year_id: yearFilter } : {}),
-                ...(typeFilter ? { project_type_id: typeFilter } : {}),
-            },
-            include: {
-                project_type: true,
-                department: true,
-                academic_year: true,
-                staff_project_group_guide_staff_idTostaff: true,
-                project_group_member: { include: { student: true } },
-            },
-            orderBy: { created_at: "desc" },
-        }),
+    // Get metadata for filters
+    const [departments, projectTypes] = await Promise.all([
         prisma.department.findMany({ orderBy: { department_name: "asc" } }),
-        prisma.academic_year.findMany({ orderBy: { year_name: "desc" } }),
         prisma.project_type.findMany({ orderBy: { project_type_name: "asc" } }),
     ])
+
+    const params = await searchParams
+    const statusFilter = typeof params.status === "string" ? params.status : undefined
+    
+    const deptParam = typeof params.department === "string" ? params.department : undefined
+    const parsedDept = deptParam ? parseInt(deptParam) : undefined
+    const deptFilter = parsedDept && !isNaN(parsedDept) ? parsedDept : undefined
+
+    const typeParam = typeof params.type === "string" ? params.type : undefined
+    const parsedType = typeParam ? parseInt(typeParam) : undefined
+    const typeFilter = parsedType && !isNaN(parsedType) ? parsedType : undefined
+
+    const groups = await prisma.project_group.findMany({
+        where: {
+            ...(statusFilter ? { status: statusFilter } : {}),
+            ...(deptFilter ? { department_id: deptFilter } : {}),
+            ...(typeFilter ? { project_type_id: typeFilter } : {}),
+        },
+        include: {
+            project_type: true,
+            department: true,
+            staff_project_group_guide_staff_idTostaff: true,
+            project_group_member: { include: { student: true } },
+        },
+        orderBy: { created_at: "desc" },
+    })
 
     const statuses = ["pending", "approved", "rejected"]
 
@@ -63,49 +74,54 @@ export default async function AllGroupsPage({
             {/* Filter Bar */}
             <Card>
                 <CardContent className="pt-6">
-                    <form className="flex flex-wrap gap-4 items-end">
-                        <div className="space-y-1">
+                    <form className="flex flex-wrap gap-6 items-end">
+                        <div className="space-y-2 flex flex-col min-w-[150px]">
                             <label className="text-sm font-medium">Status</label>
-                            <select name="status" defaultValue={statusFilter || ""} className="h-9 w-[150px] rounded-md border border-input bg-background px-3 text-sm">
+                            <select 
+                                name="status" 
+                                defaultValue={statusFilter || ""} 
+                                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                            >
                                 <option value="">All Statuses</option>
                                 {statuses.map(s => (
                                     <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
                                 ))}
                             </select>
                         </div>
-                        <div className="space-y-1">
+
+                        <div className="space-y-2 flex flex-col min-w-[200px]">
                             <label className="text-sm font-medium">Department</label>
-                            <select name="department" defaultValue={deptFilter?.toString() || ""} className="h-9 w-[180px] rounded-md border border-input bg-background px-3 text-sm">
-                                <option value="">All Departments</option>
-                                {departments.map(d => (
-                                    <option key={d.department_id} value={d.department_id}>{d.department_name}</option>
-                                ))}
-                            </select>
+                            <AcademicFilterSelector 
+                                name="department" 
+                                items={departments.map(d => ({ label: d.department_name, value: d.department_id.toString() }))}
+                                defaultValue={deptFilter?.toString()}
+                                placeholder="Select Department..."
+                            />
                         </div>
-                        <div className="space-y-1">
-                            <label className="text-sm font-medium">Academic Year</label>
-                            <select name="year" defaultValue={yearFilter?.toString() || ""} className="h-9 w-[160px] rounded-md border border-input bg-background px-3 text-sm">
-                                <option value="">All Years</option>
-                                {academicYears.map(y => (
-                                    <option key={y.academic_year_id} value={y.academic_year_id}>{y.year_name}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="space-y-1">
+
+
+                        <div className="space-y-2 flex flex-col min-w-[180px]">
                             <label className="text-sm font-medium">Project Type</label>
-                            <select name="type" defaultValue={typeFilter?.toString() || ""} className="h-9 w-[160px] rounded-md border border-input bg-background px-3 text-sm">
-                                <option value="">All Types</option>
-                                {projectTypes.map(t => (
-                                    <option key={t.project_type_id} value={t.project_type_id}>{t.project_type_name}</option>
-                                ))}
-                            </select>
+                            <AcademicFilterSelector 
+                                name="type" 
+                                items={projectTypes.map(t => ({ label: t.project_type_name, value: t.project_type_id.toString() }))}
+                                defaultValue={typeFilter?.toString()}
+                                placeholder="Select Type..."
+                            />
                         </div>
-                        <button type="submit" className="h-9 rounded-md bg-primary text-primary-foreground px-4 text-sm font-medium hover:bg-primary/90 transition-colors">
-                            Apply Filters
-                        </button>
-                        <a href="/dashboard/admin/all-groups" className="h-9 rounded-md border border-input px-4 text-sm font-medium flex items-center hover:bg-accent transition-colors">
-                            Clear
-                        </a>
+
+                        <div className="flex items-center gap-3 ml-auto">
+                            <Button type="submit" className="gap-2">
+                                <Filter className="h-4 w-4" />
+                                Apply Filters
+                            </Button>
+                            <Button asChild variant="outline" className="gap-2">
+                                <a href="/dashboard/admin/all-groups">
+                                    <X className="h-4 w-4" />
+                                    Clear
+                                </a>
+                            </Button>
+                        </div>
                     </form>
                 </CardContent>
             </Card>
@@ -115,7 +131,7 @@ export default async function AllGroupsPage({
                 <CardHeader>
                     <CardTitle>{groups.length} Group{groups.length !== 1 ? "s" : ""} Found</CardTitle>
                     <CardDescription>
-                        {statusFilter || deptFilter || yearFilter || typeFilter
+                        {statusFilter || deptFilter || typeFilter
                             ? "Showing filtered results."
                             : "Showing all project groups."}
                     </CardDescription>
@@ -133,7 +149,6 @@ export default async function AllGroupsPage({
                                         <TableHead>Type</TableHead>
                                         <TableHead>Guide</TableHead>
                                         <TableHead>Department</TableHead>
-                                        <TableHead>Year</TableHead>
                                         <TableHead>Members</TableHead>
                                         <TableHead>Status</TableHead>
                                         <TableHead>Created</TableHead>
@@ -147,11 +162,22 @@ export default async function AllGroupsPage({
                                             <TableCell>{group.project_type.project_type_name}</TableCell>
                                             <TableCell>{group.staff_project_group_guide_staff_idTostaff?.staff_name || "—"}</TableCell>
                                             <TableCell>{group.department?.department_name || "—"}</TableCell>
-                                            <TableCell>{group.academic_year?.year_name || "—"}</TableCell>
                                             <TableCell>
-                                                <span title={group.project_group_member.map(m => m.student.student_name).join(", ")}>
-                                                    {group.project_group_member.length}
-                                                </span>
+                                                <div className="flex -space-x-2">
+                                                    {group.project_group_member.slice(0, 3).map((member) => (
+                                                        <Avatar key={member.student_id} className="h-7 w-7 border-2 border-background ring-2 ring-primary/5">
+                                                            <AvatarImage src={member.student.avatar_url || ""} />
+                                                            <AvatarFallback className="text-[10px]">
+                                                                {member.student.student_name.charAt(0)}
+                                                            </AvatarFallback>
+                                                        </Avatar>
+                                                    ))}
+                                                    {group.project_group_member.length > 3 && (
+                                                        <div className="h-7 w-7 rounded-full bg-muted border-2 border-background flex items-center justify-center text-[10px] font-medium z-10">
+                                                            +{group.project_group_member.length - 3}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </TableCell>
                                             <TableCell>
                                                 <Badge variant={
@@ -176,3 +202,5 @@ export default async function AllGroupsPage({
         </div>
     )
 }
+
+

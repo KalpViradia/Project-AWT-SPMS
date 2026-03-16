@@ -7,6 +7,8 @@ import { Calendar as CalendarIcon, MapPin, Clock, BarChart3, CheckCircle, XCircl
 import { format } from "date-fns"
 import { CalendarView } from "@/components/shared/calendar-view"
 import { getMilestones } from "@/lib/milestone-actions"
+import { Badge } from "@/components/ui/badge"
+import { ExportButtons } from "@/components/shared/export-buttons"
 
 export default async function SchedulePage() {
     const session = await auth()
@@ -34,9 +36,9 @@ export default async function SchedulePage() {
         }
     })
 
-    const group = studentWithGroup?.project_group_member[0]?.project_group
+    const memberships = studentWithGroup?.project_group_member || []
 
-    if (!group) {
+    if (memberships.length === 0) {
         return (
             <div className="flex flex-col gap-6">
                 <div>
@@ -55,11 +57,13 @@ export default async function SchedulePage() {
     }
 
     // Fetch meetings
+    const groupIds = memberships.map(m => m.project_group_id)
     const meetings = await prisma.project_meeting.findMany({
-        where: { project_group_id: group.project_group_id },
+        where: { project_group_id: { in: groupIds } },
         orderBy: { meeting_datetime: 'desc' },
         include: {
             staff: true,
+            project_group: true,
             project_meeting_attendance: {
                 where: { student_id: studentId }
             }
@@ -67,11 +71,26 @@ export default async function SchedulePage() {
     })
 
     // Fetch milestones for calendar
-    const milestones = await getMilestones(group.project_group_id)
-
-    // Build calendar events
     type CalendarEvent = { id: string; date: Date; title: string; type: "meeting" | "milestone" | "report"; meta?: string }
     const calendarEvents: CalendarEvent[] = []
+
+    for (const membership of memberships) {
+        const milestones = await getMilestones(membership.project_group_id)
+        for (const ms of milestones) {
+            calendarEvents.push({
+                id: `ms-start-${ms.milestone_id}`,
+                date: new Date(ms.start_date),
+                title: `▸ ${ms.title} (${membership.project_group.project_title})`,
+                type: "milestone",
+            })
+            calendarEvents.push({
+                id: `ms-end-${ms.milestone_id}`,
+                date: new Date(ms.end_date),
+                title: `◂ ${ms.title} (${membership.project_group.project_title})`,
+                type: "milestone",
+            })
+        }
+    }
 
     for (const m of meetings) {
         calendarEvents.push({
@@ -80,21 +99,6 @@ export default async function SchedulePage() {
             title: m.meeting_purpose || "Meeting",
             type: "meeting",
             meta: m.staff.staff_name,
-        })
-    }
-
-    for (const ms of milestones) {
-        calendarEvents.push({
-            id: `ms-start-${ms.milestone_id}`,
-            date: new Date(ms.start_date),
-            title: `▸ ${ms.title}`,
-            type: "milestone",
-        })
-        calendarEvents.push({
-            id: `ms-end-${ms.milestone_id}`,
-            date: new Date(ms.end_date),
-            title: `◂ ${ms.title}`,
-            type: "milestone",
         })
     }
 
@@ -110,11 +114,39 @@ export default async function SchedulePage() {
         ? Math.round((presentCount / completedMeetings.length) * 100)
         : 0
 
+    const meetingExportData = meetings.map(m => {
+        const attendance = m.project_meeting_attendance[0];
+        return {
+            purpose: m.meeting_purpose || 'Project Meeting',
+            datetime: format(new Date(m.meeting_datetime), "PPP p"),
+            status: m.meeting_status,
+            attendance: attendance?.is_present ? "Present" : attendance ? "Absent" : "Pending",
+            notes: m.meeting_notes || "None"
+        }
+    })
+    const meetingExportColumns = [
+        { header: "Purpose", key: "purpose" },
+        { header: "Date & Time", key: "datetime" },
+        { header: "Status", key: "status" },
+        { header: "Attendance", key: "attendance" },
+        { header: "Notes", key: "notes" },
+    ]
+
     return (
         <div className="flex flex-col gap-6">
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight">Schedule & Calendar</h1>
-                <p className="text-muted-foreground">Upcoming meetings and reviews for {group.project_group_name}.</p>
+            <div className="flex items-center justify-between flex-wrap gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight">Schedule & Calendar</h1>
+                    <p className="text-muted-foreground">Upcoming meetings and reviews for your projects.</p>
+                </div>
+                {meetings.length > 0 && (
+                    <ExportButtons 
+                        data={meetingExportData} 
+                        columns={meetingExportColumns} 
+                        filename="my-schedule" 
+                        title="My Schedule and Attendance" 
+                    />
+                )}
             </div>
 
             {/* ── Calendar View ── */}
@@ -143,7 +175,7 @@ export default async function SchedulePage() {
                 </Card>
                 <Card>
                     <CardContent className="pt-6 flex items-center gap-4">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-500/10 text-green-500">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-500/10 text-green-600 dark:text-green-400">
                             <CheckCircle className="h-5 w-5" />
                         </div>
                         <div>
@@ -154,7 +186,7 @@ export default async function SchedulePage() {
                 </Card>
                 <Card>
                     <CardContent className="pt-6 flex items-center gap-4">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/10 text-red-500">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10 text-destructive">
                             <XCircle className="h-5 w-5" />
                         </div>
                         <div>
@@ -194,12 +226,13 @@ export default async function SchedulePage() {
                                         <div className="space-y-1">
                                             <CardTitle className="text-base flex items-center gap-2">
                                                 {meeting.meeting_purpose || "Project Meeting"}
+                                                <Badge variant="outline" className="font-normal">{meeting.project_group.project_title}</Badge>
                                                 {isPast && (
                                                     <span className={`text-xs px-2 py-0.5 rounded-full ${attendance?.is_present
-                                                        ? "bg-green-100 text-green-700"
+                                                        ? "bg-green-500/10 text-green-600 dark:text-green-400"
                                                         : attendance
-                                                            ? "bg-red-100 text-red-700"
-                                                            : "bg-gray-100 text-gray-700"
+                                                            ? "bg-destructive/10 text-destructive"
+                                                            : "bg-muted text-muted-foreground"
                                                         }`}>
                                                         {attendance?.is_present ? "Present" : attendance ? "Absent" : "Pending"}
                                                     </span>

@@ -15,6 +15,8 @@ export default async function DashboardPage() {
         redirect('/dashboard/student')
     } else if (role === 'faculty') {
         redirect('/dashboard/faculty')
+    } else if (role === 'admin') {
+        redirect('/dashboard/admin')
     } else {
         // Fallback or error page
         return (

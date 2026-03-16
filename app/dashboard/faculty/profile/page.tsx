@@ -7,7 +7,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import Link from "next/link"
+import { ProfileViewEdit } from "@/components/profile-view-edit"
+import { updateFacultyProfile } from "@/lib/actions"
 
 export default async function FacultyProfilePage() {
     const session = await auth()
@@ -19,80 +20,46 @@ export default async function FacultyProfilePage() {
     const staff = await prisma.staff.findUnique({
         where: { staff_id: staffId },
         include: {
+            department: true,
             project_group_project_group_guide_staff_idTostaff: true
         }
+    })
+
+    const departments = await prisma.department.findMany({
+        orderBy: { department_name: 'asc' }
     })
 
     if (!staff) {
         return <div>Staff not found</div>
     }
 
-    // Initials
-    const initials = staff.staff_name
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2)
-
     const activeGroups = staff.project_group_project_group_guide_staff_idTostaff
 
     return (
         <div className="flex flex-col gap-6">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Profile</h1>
-                    <p className="text-muted-foreground">Manage your personal information.</p>
-                </div>
-                <Button asChild>
-                    <Link href="/dashboard/faculty/settings">Edit Profile</Link>
-                </Button>
+            <div>
+                <h1 className="text-3xl font-bold tracking-tight">Profile</h1>
+                <p className="text-muted-foreground">Manage your personal information.</p>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Personal Info</CardTitle>
-                        <CardDescription>Your basic profile details</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        <div className="flex items-center gap-4">
-                            <Avatar className="h-20 w-20">
-                                <AvatarImage src="/avatars/01.png" alt={staff.staff_name} />
-                                <AvatarFallback className="text-lg">{initials}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                                <h3 className="text-xl font-medium">{staff.staff_name}</h3>
-                                <p className="text-sm text-muted-foreground">Faculty</p>
-                            </div>
-                        </div>
-
-                        <div className="space-y-4">
-                            <div className="grid gap-1">
-                                <Label className="text-muted-foreground">Email</Label>
-                                <div className="font-medium">{staff.email}</div>
-                            </div>
-                            <div className="grid gap-1">
-                                <Label className="text-muted-foreground">Phone</Label>
-                                <div className="font-medium">{staff.phone || "Not provided"}</div>
-                            </div>
-                            <div className="grid gap-1">
-                                <Label className="text-muted-foreground">Description</Label>
-                                <div className="font-medium">{staff.description || "No description"}</div>
-                            </div>
-                            {staff.skills && staff.skills.length > 0 && (
-                                <div className="grid gap-1">
-                                    <Label className="text-muted-foreground">Skills</Label>
-                                    <div className="flex flex-wrap gap-2">
-                                        {staff.skills.map((skill, i) => (
-                                            <Badge key={i} variant="secondary">{skill}</Badge>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                <div className="md:col-span-2">
+                    <ProfileViewEdit
+                        initialData={{
+                            name: staff.staff_name,
+                            email: staff.email || '',
+                            phone: staff.phone,
+                            description: staff.description,
+                            avatar_url: staff.avatar_url,
+                            skills: staff.skills || [],
+                            department_id: staff.department_id,
+                            department_name: staff.department?.department_name
+                        }}
+                        action={updateFacultyProfile}
+                        role="faculty"
+                        departments={departments}
+                    />
+                </div>
 
                 <Card>
                     <CardHeader>

@@ -8,12 +8,17 @@ import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { SkillsTagInput } from "@/components/ui/skills-tag-input"
 import { searchStudentsBySkills } from "@/lib/actions"
-import { Search, Users } from "lucide-react"
+import { Search, Users, ExternalLink } from "lucide-react"
+import { StudentProfileDialog } from "./student-profile-dialog"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 interface StudentResult {
     student_id: number;
     student_name: string;
     email: string | null;
+    phone: string | null;
+    description: string | null;
+    avatar_url: string | null;
     skills: string[];
     group: { name: string; project: string } | null;
 }
@@ -23,6 +28,8 @@ export function StudentSearchBySkills() {
     const [results, setResults] = useState<StudentResult[]>([])
     const [hasSearched, setHasSearched] = useState(false)
     const [isPending, startTransition] = useTransition()
+    const [selectedStudent, setSelectedStudent] = useState<StudentResult | null>(null)
+    const [isDialogOpen, setIsDialogOpen] = useState(false)
 
     function handleSearch() {
         if (skills.length === 0) return
@@ -35,6 +42,11 @@ export function StudentSearchBySkills() {
                 console.error("Search failed:", error)
             }
         })
+    }
+
+    function handleViewProfile(student: StudentResult) {
+        setSelectedStudent(student)
+        setIsDialogOpen(true)
     }
 
     return (
@@ -83,12 +95,29 @@ export function StudentSearchBySkills() {
                                         <TableHead>Email</TableHead>
                                         <TableHead>Skills</TableHead>
                                         <TableHead>Group</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {results.map((student) => (
-                                        <TableRow key={student.student_id}>
-                                            <TableCell className="font-medium">{student.student_name}</TableCell>
+                                    {results.map((student) => {
+                                        const initials = student.student_name
+                                            .split(" ")
+                                            .map((n) => n[0])
+                                            .join("")
+                                            .toUpperCase()
+                                            .slice(0, 2);
+
+                                        return (
+                                            <TableRow key={student.student_id}>
+                                                <TableCell className="font-medium">
+                                                    <div className="flex items-center gap-3">
+                                                        <Avatar className="h-8 w-8">
+                                                            <AvatarImage src={student.avatar_url || ""} alt={student.student_name} />
+                                                            <AvatarFallback className="text-[10px]">{initials}</AvatarFallback>
+                                                        </Avatar>
+                                                        {student.student_name}
+                                                    </div>
+                                                </TableCell>
                                             <TableCell>{student.email || "—"}</TableCell>
                                             <TableCell>
                                                 <div className="flex flex-wrap gap-1">
@@ -113,14 +142,32 @@ export function StudentSearchBySkills() {
                                                     <Badge variant="outline">No group</Badge>
                                                 )}
                                             </TableCell>
+                                            <TableCell className="text-right">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => handleViewProfile(student)}
+                                                    className="h-8 w-8 p-0"
+                                                >
+                                                    <ExternalLink className="h-4 w-4" />
+                                                    <span className="sr-only">View Profile</span>
+                                                </Button>
+                                            </TableCell>
                                         </TableRow>
-                                    ))}
+                                    );
+                                })}
                                 </TableBody>
                             </Table>
                         )}
                     </CardContent>
                 </Card>
             )}
+
+            <StudentProfileDialog
+                student={selectedStudent}
+                open={isDialogOpen}
+                onOpenChange={setIsDialogOpen}
+            />
         </div>
     )
 }

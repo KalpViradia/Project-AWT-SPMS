@@ -10,8 +10,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
-import { Upload } from "lucide-react"
+import { Upload, Check } from "lucide-react"
 import { SkillsTagInput } from "@/components/ui/skills-tag-input"
+import { FileUpload } from "@/components/ui/file-upload"
+import { SearchSelect } from "@/components/ui/search-select"
+import { cn } from "@/lib/utils"
 
 interface ProposalFormProps {
     projectTypes: { project_type_id: number; project_type_name: string }[];
@@ -23,6 +26,8 @@ export function ProposalForm({ projectTypes, guides, action }: ProposalFormProps
     const [isPending, setIsPending] = useState(false);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [projectSkills, setProjectSkills] = useState<string[]>([]);
+    const [guideOpen, setGuideOpen] = useState(false);
+    const [guideValue, setGuideValue] = useState("");
     const router = useRouter();
 
     // Sort guides by skill overlap with project skills
@@ -115,23 +120,31 @@ export function ProposalForm({ projectTypes, guides, action }: ProposalFormProps
                                 </Select>
                             </div>
 
-                            <div className="space-y-2">
+                            <div className="space-y-2 flex flex-col pt-1">
                                 <Label htmlFor="guideId">Project Guide *</Label>
-                                <Select name="guideId" required>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select guide" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {sortedGuides.map((guide) => (
-                                            <SelectItem key={guide.staff_id} value={guide.staff_id.toString()}>
-                                                {guide.staff_name}
-                                                {guide.matchCount > 0 && (
-                                                    <span className="ml-2 text-xs text-primary">({guide.matchCount} skill match{guide.matchCount > 1 ? 'es' : ''})</span>
-                                                )}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <SearchSelect
+                                    items={sortedGuides.map(g => ({
+                                        staff_id: g.staff_id,
+                                        staff_name: g.staff_name,
+                                        matchCount: g.matchCount,
+                                        label: g.staff_name,
+                                        value: g.staff_id.toString()
+                                    }))}
+                                    value={guideValue}
+                                    onValueChange={setGuideValue}
+                                    placeholder="Search and select project guide..."
+                                    name="guideId"
+                                    renderItem={(item) => (
+                                        <div className="flex flex-col">
+                                            <span className="font-medium">{item.staff_name}</span>
+                                            {item.matchCount > 0 && (
+                                                <span className="text-[10px] text-primary">
+                                                    {item.matchCount} skill match{item.matchCount > 1 ? 'es' : ''}
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
+                                />
                             </div>
                         </div>
 
@@ -201,35 +214,15 @@ export function ProposalForm({ projectTypes, guides, action }: ProposalFormProps
                     <div className="space-y-4">
                         <h3 className="text-lg font-semibold">Supporting Document (Optional)</h3>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="proposalFile">Upload Proposal Document</Label>
-                            <div className="flex items-center gap-2">
-                                <Input
-                                    id="proposalFile"
-                                    type="file"
-                                    accept=".pdf,.doc,.docx"
-                                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                                    className="cursor-pointer"
-                                />
-                                {selectedFile && (
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => {
-                                            setSelectedFile(null);
-                                            const fileInput = document.getElementById('proposalFile') as HTMLInputElement;
-                                            if (fileInput) fileInput.value = '';
-                                        }}
-                                    >
-                                        Clear
-                                    </Button>
-                                )}
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                                Accepted formats: PDF, DOC, DOCX. Max size: 5MB
-                            </p>
-                        </div>
+                        <FileUpload
+                            label="Upload Proposal Document"
+                            accept=".pdf,.doc,.docx"
+                            value={selectedFile}
+                            onChange={setSelectedFile}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            Accepted formats: PDF, DOC, DOCX. Max size: 5MB
+                        </p>
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-between">

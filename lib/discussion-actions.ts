@@ -193,15 +193,15 @@ export async function getFacultyGroups() {
     })
 }
 
-// ─── Get student's group id ───
-export async function getStudentGroupId() {
+// ─── Get student's groups ───
+export async function getStudentGroups() {
     const session = await auth()
-    if (!session?.user) return null
+    if (!session?.user) return []
 
     const user = session.user as { id: string; role?: string | null }
     const studentId = parseInt(user.id)
 
-    const membership = await prisma.project_group_member.findFirst({
+    const memberships = await prisma.project_group_member.findMany({
         where: { student_id: studentId },
         include: {
             project_group: {
@@ -211,9 +211,11 @@ export async function getStudentGroupId() {
                 },
             },
         },
+        orderBy: { created_at: 'asc' },
     })
 
-    return membership
-        ? { groupId: membership.project_group.project_group_id, groupName: membership.project_group.project_group_name }
-        : null
+    return memberships.map((m) => ({
+        groupId: m.project_group.project_group_id,
+        groupName: m.project_group.project_group_name,
+    }))
 }

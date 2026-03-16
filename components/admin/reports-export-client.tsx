@@ -13,8 +13,8 @@ export function ReportsExportClient({ data, columns }: ReportsExportClientProps)
         <ExportButtons
             data={data}
             columns={columns}
-            filename="spms_projects_report"
-            title="SPMS - All Projects Report"
+            filename="studionex_projects_report"
+            title="Studionex - All Projects Report"
         />
     )
 }

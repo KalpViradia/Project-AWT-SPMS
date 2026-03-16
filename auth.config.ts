@@ -1,6 +1,8 @@
 
 import type { NextAuthConfig } from "next-auth"
 
+import { NextResponse } from 'next/server';
+
 export const authConfig = {
   pages: {
     signIn: '/login',
@@ -13,15 +15,28 @@ export const authConfig = {
       const isOnHome = nextUrl.pathname === '/';
 
       if (isOnDashboard) {
-        if (isLoggedIn) return true;
-        return false; // Redirect unauthenticated users to login page
-      } else if (isLoggedIn && (isOnLogin || isOnHome)) {
-        // Redirect logged-in users to their role-based dashboard
+        if (!isLoggedIn) return false;
+
         const role = (auth.user as any).role;
-        if (role === 'student') return Response.redirect(new URL('/dashboard/student', nextUrl));
-        if (role === 'faculty') return Response.redirect(new URL('/dashboard/faculty', nextUrl));
-        if (role === 'admin') return Response.redirect(new URL('/dashboard/admin', nextUrl));
-        return Response.redirect(new URL('/dashboard', nextUrl));
+        const path = nextUrl.pathname;
+
+        if (path.startsWith('/dashboard/student') && role !== 'student') {
+           return NextResponse.redirect(new URL('/unauthorized', nextUrl));
+        }
+        if (path.startsWith('/dashboard/faculty') && role !== 'faculty') {
+           return NextResponse.redirect(new URL('/unauthorized', nextUrl));
+        }
+        if (path.startsWith('/dashboard/admin') && role !== 'admin') {
+           return NextResponse.redirect(new URL('/unauthorized', nextUrl));
+        }
+
+        return true;
+      } else if (isLoggedIn && (isOnLogin || isOnHome)) {
+        const role = (auth.user as any).role;
+        if (role === 'student') return NextResponse.redirect(new URL('/dashboard/student', nextUrl));
+        if (role === 'faculty') return NextResponse.redirect(new URL('/dashboard/faculty', nextUrl));
+        if (role === 'admin') return NextResponse.redirect(new URL('/dashboard/admin', nextUrl));
+        return NextResponse.redirect(new URL('/dashboard', nextUrl));
       }
       return true;
     },
@@ -29,6 +44,10 @@ export const authConfig = {
         if (user) {
             token.id = user.id;
             token.role = (user as any).role;
+            token.image = (user as any).image;
+        }
+        if (trigger === "update" && session?.image) {
+            token.image = session.image;
         }
         return token;
     },
@@ -36,6 +55,7 @@ export const authConfig = {
         if (session.user) {
             session.user.id = token.id as string;
             (session.user as any).role = token.role as string;
+            session.user.image = token.image as string;
         }
         return session;
     }

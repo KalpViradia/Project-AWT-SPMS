@@ -14,6 +14,7 @@ interface ProfileFormProps {
         email: string;
         phone?: string | null;
         description?: string | null;
+        avatar_url?: string | null;
     };
     action: (formData: FormData) => Promise<void>;
     role: "student" | "faculty";
@@ -56,6 +57,14 @@ export function ProfileForm({ initialData, action, role }: ProfileFormProps) {
                 <Input id="email" value={initialData.email} disabled className="bg-muted" />
                 <p className="text-[0.8rem] text-muted-foreground">
                     Email address cannot be changed.
+                </p>
+            </div>
+
+            <div className="space-y-2">
+                <Label htmlFor="avatarUrl">Profile Picture URL</Label>
+                <Input id="avatarUrl" name="avatarUrl" defaultValue={initialData.avatar_url || ''} placeholder="https://example.com/photo.jpg" />
+                <p className="text-[0.8rem] text-muted-foreground">
+                    Enter a URL for your profile picture.
                 </p>
             </div>
 

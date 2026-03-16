@@ -62,6 +62,7 @@ export function KeyboardShortcutsProvider({ role, children }: KeyboardShortcutsP
                 : [
                     { href: "/dashboard/student", label: "Overview" },
                     { href: "/dashboard/student/my-group", label: "My Group" },
+                    { href: "/dashboard/student/join-group", label: "Join Group" },
                     { href: "/dashboard/student/project-details", label: "Project Details" },
                     { href: "/dashboard/student/schedule", label: "Schedule & Calendar" },
                     { href: "/dashboard/student/reports", label: "Reports" },
@@ -76,7 +77,7 @@ export function KeyboardShortcutsProvider({ role, children }: KeyboardShortcutsP
             title: "Navigation",
             items: navLinks.map((link, i) => ({
                 label: link.label,
-                keys: `Alt + ${i + 1}`,
+                keys: i < 9 ? `Alt + ${i + 1}` : (i === 9 ? `Alt + 0` : `Alt + Shift + ${i - 9}`),
             })),
         },
         {
@@ -116,11 +117,14 @@ export function KeyboardShortcutsProvider({ role, children }: KeyboardShortcutsP
                 const key = e.key.toLowerCase()
 
                 // Alt + number — page navigation
-                const num = parseInt(e.key)
-                if (num >= 1 && num <= navLinks.length) {
-                    e.preventDefault()
-                    router.push(navLinks[num - 1].href)
-                    return
+                const num = parseInt(key)
+                if (!isNaN(num)) {
+                    const targetIndex = num === 0 ? 9 : num - 1
+                    if (targetIndex >= 0 && targetIndex < navLinks.length) {
+                        e.preventDefault()
+                        router.push(navLinks[targetIndex].href)
+                        return
+                    }
                 }
 
                 // Alt + P — Profile

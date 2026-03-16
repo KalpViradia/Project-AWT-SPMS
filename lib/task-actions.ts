@@ -4,6 +4,7 @@ import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
 import { revalidatePath } from "next/cache"
+import { createNotification } from "@/lib/notification-actions"
 
 // ============================================
 // TASK / KANBAN CRUD
@@ -65,7 +66,7 @@ export async function createTask(formData: FormData) {
         _max: { sort_order: true },
     })
 
-    await prisma.project_task.create({
+    const newTask = await prisma.project_task.create({
         data: {
             project_group_id: projectGroupId,
             title,
@@ -76,6 +77,17 @@ export async function createTask(formData: FormData) {
             sort_order: (maxSort._max.sort_order ?? -1) + 1,
         },
     })
+
+    // Notify assigned student
+    if (assignedTo && assignedTo !== studentId) {
+        await createNotification({
+            userId: assignedTo,
+            userRole: 'student',
+            title: 'New Task Assigned',
+            message: `You have been assigned a new task: ${title}`,
+            link: '/dashboard/student/tasks',
+        });
+    }
 
     revalidatePath('/dashboard/student/tasks')
     return { success: true }
@@ -117,7 +129,7 @@ export async function updateTask(formData: FormData) {
     })
     if (!membership) return { error: "You are not a member of this group." }
 
-    await prisma.project_task.update({
+    const updatedTask = await prisma.project_task.update({
         where: { task_id: taskId },
         data: {
             ...(title !== undefined && { title }),
@@ -129,6 +141,17 @@ export async function updateTask(formData: FormData) {
             modified_at: new Date(),
         },
     })
+
+    // Notify new assignee if assignment changed
+    if (assignedTo && assignedTo !== task.assigned_to) {
+        await createNotification({
+            userId: assignedTo,
+            userRole: 'student',
+            title: 'Task Assigned',
+            message: `You have been assigned to the task: ${updatedTask.title}`,
+            link: '/dashboard/student/tasks',
+        });
+    }
 
     revalidatePath('/dashboard/student/tasks')
     return { success: true }
@@ -156,10 +179,26 @@ export async function updateTaskStatus(formData: FormData) {
     })
     if (!membership) return { error: "You are not a member of this group." }
 
-    await prisma.project_task.update({
+    const updatedTask = await prisma.project_task.update({
         where: { task_id: taskId },
         data: { status, modified_at: new Date() },
+        include: {
+            project_group: {
+                select: { guide_staff_id: true, project_group_name: true }
+            }
+        }
     })
+
+    // Notify guide when a task is moved to review or done
+    if (['review', 'done'].includes(status) && updatedTask.project_group.guide_staff_id) {
+        await createNotification({
+            userId: updatedTask.project_group.guide_staff_id,
+            userRole: 'faculty',
+            title: 'Task Status Update',
+            message: `Group "${updatedTask.project_group.project_group_name}" updated task "${updatedTask.title}" to ${status}.`,
+            link: '/dashboard/faculty/groups',
+        });
+    }
 
     revalidatePath('/dashboard/student/tasks')
     return { success: true }

@@ -1,6 +1,6 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
-import { getStudentGroupId } from "@/lib/discussion-actions"
+import { getStudentGroups } from "@/lib/discussion-actions"
 import { Card, CardContent } from "@/components/ui/card"
 import { MessageSquare } from "lucide-react"
 import { StudentDiscussionClient } from "./client"
@@ -9,12 +9,12 @@ export default async function StudentDiscussionPage() {
     const session = await auth()
     if (!session?.user) redirect("/login")
 
-    const user = session.user as { id: string; role?: string | null }
+    const user = session.user as { id: string; name?: string | null; role?: string | null }
     const studentId = parseInt(user.id)
 
-    const groupInfo = await getStudentGroupId()
+    const groups = await getStudentGroups()
 
-    if (!groupInfo) {
+    if (!groups || groups.length === 0) {
         return (
             <div className="flex flex-col gap-4">
                 <h1 className="text-3xl font-bold tracking-tight">Discussion</h1>
@@ -30,9 +30,9 @@ export default async function StudentDiscussionPage() {
 
     return (
         <StudentDiscussionClient
-            groupId={groupInfo.groupId}
-            groupName={groupInfo.groupName}
+            groups={groups}
             studentId={studentId}
+            studentName={user.name || "Student"}
         />
     )
 }

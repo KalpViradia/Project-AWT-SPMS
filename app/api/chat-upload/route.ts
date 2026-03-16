@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/auth"
-import { mkdir, writeFile } from "fs/promises"
-import { join } from "path"
+import { uploadToCloudinary } from "@/lib/cloudinary"
 
 const IMAGE_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"]
 const FILE_EXTS = [".pdf", ".doc", ".docx", ".txt", ".zip", ".xlsx", ".pptx", ".csv"]
@@ -38,15 +37,12 @@ export async function POST(req: NextRequest) {
         const bytes = await file.arrayBuffer()
         const buffer = Buffer.from(bytes)
 
-        const uploadDir = join(process.cwd(), "public", "uploads", "chat")
-        await mkdir(uploadDir, { recursive: true })
-
-        const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_")
-        const fileName = `${Date.now()}-${safeName}`
-        const filePath = join(uploadDir, fileName)
-        await writeFile(filePath, buffer)
-
-        const url = `/uploads/chat/${fileName}`
+        const url = await uploadToCloudinary(
+            buffer,
+            "chat",
+            file.name,
+            isImage ? "image" : "raw"
+        )
         const type = isImage ? "image" : "file"
 
         return NextResponse.json({ url, type, name: file.name })

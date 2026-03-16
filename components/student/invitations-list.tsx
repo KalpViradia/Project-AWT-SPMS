@@ -33,12 +33,20 @@ export function InvitationsList({ invitations }: InvitationsListProps) {
         }
     }
 
-    if (invitations.length === 0) return null;
+    if (invitations.length === 0) {
+        return (
+            <Card className="border-dashed">
+                <CardContent className="py-8 text-center text-muted-foreground">
+                    <p>You have no pending invitations to join any groups.</p>
+                </CardContent>
+            </Card>
+        )
+    }
 
     return (
-        <Card className="mt-6 border-indigo-100 bg-indigo-50/50">
+        <Card className="border-primary/20 bg-primary/5">
             <CardHeader className="pb-3">
-                <CardTitle className="text-lg text-indigo-900">Pending Invitations</CardTitle>
+                <CardTitle className="text-lg">Pending Invitations</CardTitle>
                 <CardDescription>
                     You have been invited to join the following groups.
                 </CardDescription>
@@ -47,10 +55,10 @@ export function InvitationsList({ invitations }: InvitationsListProps) {
                 {invitations.map((invitation) => (
                     <div
                         key={invitation.invitation_id}
-                        className="flex items-center justify-between rounded-lg border bg-white p-4 shadow-sm"
+                        className="flex items-center justify-between rounded-lg border bg-card p-4 shadow-sm"
                     >
                         <div className="space-y-1">
-                            <h4 className="font-semibold">{invitation.project_group.project_group_name}</h4>
+                            <h4 className="font-semibold text-foreground">{invitation.project_group.project_group_name}</h4>
                             <p className="text-sm text-muted-foreground">{invitation.project_group.project_title}</p>
                             <p className="text-xs text-muted-foreground">
                                 Received {format(new Date(invitation.created_at), "PPP")}
@@ -58,12 +66,12 @@ export function InvitationsList({ invitations }: InvitationsListProps) {
                         </div>
                         <div className="flex gap-2">
                             <form action={() => handleResponse(invitation.invitation_id, "reject")}>
-                                <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                                <Button size="sm" variant="outline" className="text-destructive hover:text-destructive hover:bg-destructive/10">
                                     Reject
                                 </Button>
                             </form>
                             <form action={() => handleResponse(invitation.invitation_id, "accept")}>
-                                <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700">
+                                <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
                                     Accept
                                 </Button>
                             </form>

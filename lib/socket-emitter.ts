@@ -1,12 +1,23 @@
-import type { Server } from "socket.io"
+/**
+ * Server-side Socket.IO emitter.
+ * In production (Vercel), emits events by POSTing to the Render Socket.IO server.
+ * In development, uses the in-process globalThis.__io if available, otherwise
+ * falls back to HTTP relay.
+ */
 
-declare global {
-    // eslint-disable-next-line no-var
-    var __io: Server | undefined
-}
+const SOCKET_SERVER_URL = process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:4000"
+const EMIT_SECRET = process.env.SOCKET_EMIT_SECRET || "dev-secret"
 
-function getIO(): Server | null {
-    return globalThis.__io ?? null
+async function relayEmit(room: string, event: string, data: unknown) {
+    try {
+        await fetch(`${SOCKET_SERVER_URL}/emit`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ secret: EMIT_SECRET, room, event, data }),
+        })
+    } catch (err) {
+        console.error("[socket-emitter] Failed to relay event:", err)
+    }
 }
 
 /**
@@ -17,9 +28,7 @@ export function emitNotification(
     userRole: string,
     data: { title: string; message: string; link?: string }
 ) {
-    const io = getIO()
-    if (!io) return
-    io.to(`user:${userRole}:${userId}`).emit("notification:new", data)
+    relayEmit(`user:${userRole}:${userId}`, "notification:new", data)
 }
 
 /**
@@ -29,7 +38,5 @@ export function emitDiscussionMessage(
     groupId: number,
     message: Record<string, unknown>
 ) {
-    const io = getIO()
-    if (!io) return
-    io.to(`group:${groupId}`).emit("discussion:message", message)
+    relayEmit(`group:${groupId}`, "discussion:message", message)
 }

@@ -27,8 +27,8 @@ export function SkillsTagInput({
     const inputRef = useRef<HTMLInputElement>(null)
 
     function addSkill(raw: string) {
-        const skill = raw.trim()
-        if (skill && !skills.some((s) => s.toLowerCase() === skill.toLowerCase())) {
+        const skill = raw.trim().toLowerCase()
+        if (skill && !skills.includes(skill)) {
             const updated = [...skills, skill]
             setSkills(updated)
             onChange?.(updated)

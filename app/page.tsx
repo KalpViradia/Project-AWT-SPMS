@@ -117,10 +117,8 @@ export default function LandingPage() {
       >
         <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
           <Link href="/" className="flex items-center gap-2 group">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:shadow-indigo-500/40 transition-shadow">
-              <GraduationCap className="h-5 w-5 text-white" />
-            </div>
-            <span className="text-xl font-bold tracking-tight">SPMS</span>
+            <img src="/logo-dark.png" alt="Studionex" className="h-8 hidden dark:block" />
+            <img src="/logo-light.png" alt="Studionex" className="h-8 block dark:hidden" />
           </Link>
 
           <div className="flex items-center gap-3">
@@ -159,7 +157,7 @@ export default function LandingPage() {
             className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-border bg-muted/50 text-sm text-muted-foreground mb-8"
           >
             <Sparkles className="h-4 w-4 text-primary" />
-            Student Project Management System
+            Studionex
           </motion.div>
 
           <motion.h1
@@ -169,11 +167,7 @@ export default function LandingPage() {
             custom={1}
             className="text-4xl sm:text-5xl md:text-7xl font-extrabold tracking-tight leading-[1.1] mb-6"
           >
-            Manage Your
-            <br />
-            <span className="text-gradient">Academic Projects</span>
-            <br />
-            Effortlessly
+            Studionex
           </motion.h1>
 
           <motion.p
@@ -181,11 +175,19 @@ export default function LandingPage() {
             initial="hidden"
             animate="visible"
             custom={2}
-            className="max-w-2xl mx-auto text-lg md:text-xl text-muted-foreground mb-10 leading-relaxed"
+            className="text-2xl font-medium text-foreground mb-4"
           >
-            A unified platform for students and faculty to organize project
-            groups, submit weekly reports, schedule meetings, and track
-            progress — all in one place.
+            Empowering Academic Collaboration
+          </motion.p>
+
+          <motion.p
+            variants={fadeUp}
+            initial="hidden"
+            animate="visible"
+            custom={2}
+            className="max-w-2xl mx-auto text-lg md:text-xl text-muted-foreground mb-10 leading-relaxed font-semibold italic"
+          >
+            Manage. Collaborate. Excel.
           </motion.p>
 
           <motion.div
@@ -448,13 +450,9 @@ export default function LandingPage() {
       <footer className="border-t border-border py-10 px-6">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-              <GraduationCap className="h-4 w-4 text-white" />
-            </div>
-            <span className="font-semibold">SPMS</span>
-            <span className="text-muted-foreground text-sm ml-2">
-              Student Project Management System
-            </span>
+            <img src="/icon-dark.png" alt="Studionex" className="h-6 w-6 hidden dark:block" />
+            <img src="/icon-light.png" alt="Studionex" className="h-6 w-6 block dark:hidden" />
+            <span className="font-semibold text-lg">Studionex</span>
           </div>
           <div className="flex items-center gap-6 text-sm text-muted-foreground">
             <Link href="/login" className="hover:text-foreground transition-colors">

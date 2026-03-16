@@ -16,6 +16,7 @@ import Link from "next/link"
 import { format } from "date-fns"
 import { DocumentsList } from "@/components/shared/documents-list"
 import { GanttChart } from "@/components/shared/gantt-chart"
+import { ExportButtons } from "@/components/shared/export-buttons"
 import { getMilestones } from "@/lib/milestone-actions"
 import { getTaskCounts } from "@/lib/task-actions"
 
@@ -78,6 +79,40 @@ export default async function GroupDetailsPage({ params }: { params: Promise<{ g
 
     // Fetch task counts for kanban summary
     const taskCounts = await getTaskCounts(id)
+
+    const reportExportData = reports.map(r => ({
+        week: r.week_number,
+        date: format(new Date(r.submission_date), "MMM d, yyyy"),
+        status: r.status,
+        content: r.report_content,
+        feedback: r.feedback || "None"
+    }))
+    const reportExportColumns = [
+        { header: "Week", key: "week" },
+        { header: "Date", key: "date" },
+        { header: "Status", key: "status" },
+        { header: "Content", key: "content" },
+        { header: "Feedback", key: "feedback" },
+    ]
+
+    const meetingExportData = meetings.map(m => {
+        const total = group.project_group_member.length;
+        const present = m.project_meeting_attendance.filter(a => a.is_present).length;
+        return {
+            purpose: m.meeting_purpose || 'Project Meeting',
+            datetime: format(new Date(m.meeting_datetime), "PPP p"),
+            status: m.meeting_status,
+            attendance: `${present}/${total} present`,
+            notes: m.meeting_notes || "None"
+        }
+    })
+    const meetingExportColumns = [
+        { header: "Purpose", key: "purpose" },
+        { header: "Date & Time", key: "datetime" },
+        { header: "Status", key: "status" },
+        { header: "Attendance", key: "attendance" },
+        { header: "Notes", key: "notes" },
+    ]
 
     return (
         <div className="space-y-6">
@@ -186,9 +221,19 @@ export default async function GroupDetailsPage({ params }: { params: Promise<{ g
                     </Card>
 
                     <Card>
-                        <CardHeader>
-                            <CardTitle>Recent Reports</CardTitle>
-                            <CardDescription>history of weekly submissions.</CardDescription>
+                        <CardHeader className="flex flex-row items-center justify-between pb-2">
+                            <div className="space-y-1.5">
+                                <CardTitle>Recent Reports</CardTitle>
+                                <CardDescription>history of weekly submissions.</CardDescription>
+                            </div>
+                            {reports.length > 0 && (
+                                <ExportButtons 
+                                    data={reportExportData} 
+                                    columns={reportExportColumns} 
+                                    filename={`${group.project_group_name}-reports`.replace(/\s+/g, '-')} 
+                                    title={`${group.project_group_name} - Reports`} 
+                                />
+                            )}
                         </CardHeader>
                         <CardContent>
                             {reports.length === 0 ? (
@@ -225,13 +270,23 @@ export default async function GroupDetailsPage({ params }: { params: Promise<{ g
                             <CardTitle>Documents</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <DocumentsList documents={group.project_document} />
+                            <DocumentsList documents={group.project_document} userRole="faculty" />
                         </CardContent>
                     </Card>
 
                     <Card>
-                        <CardHeader>
-                            <CardTitle>Meetings</CardTitle>
+                        <CardHeader className="flex flex-row items-center justify-between pb-2">
+                            <div className="space-y-1.5">
+                                <CardTitle>Meetings</CardTitle>
+                            </div>
+                            {meetings.length > 0 && (
+                                <ExportButtons 
+                                    data={meetingExportData} 
+                                    columns={meetingExportColumns} 
+                                    filename={`${group.project_group_name}-meetings`.replace(/\s+/g, '-')} 
+                                    title={`${group.project_group_name} - Meetings (Attendance)`} 
+                                />
+                            )}
                         </CardHeader>
                         <CardContent>
                             {meetings.length === 0 ? (

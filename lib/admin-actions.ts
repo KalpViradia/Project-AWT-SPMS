@@ -4,6 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
+import { createNotification } from "./notification-actions";
 
 const CreateStudentSchema = z.object({
   name: z.string().min(2),
@@ -110,14 +111,37 @@ export async function assignGuideAsAdmin(formData: FormData) {
   const { groupId, guideId } = validatedFields.data;
 
   try {
-    await prisma.project_group.update({
+    const updatedGroup = await prisma.project_group.update({
       where: { project_group_id: groupId },
       data: {
         // Connect selected faculty as guide (mentor) for this project group
         staff_project_group_guide_staff_idTostaff: { connect: { staff_id: guideId } },
         modified_at: new Date(),
       },
+      include: {
+        project_group_member: true
+      }
     });
+
+    // Notify guide
+    await createNotification({
+      userId: guideId,
+      userRole: 'faculty',
+      title: 'Admin Assigned Guide',
+      message: `Admin has assigned you as a guide for "${updatedGroup.project_title}".`,
+      link: '/dashboard/faculty/groups',
+    });
+
+    // Notify members
+    for (const member of updatedGroup.project_group_member) {
+      await createNotification({
+        userId: member.student_id,
+        userRole: 'student',
+        title: 'Guide Assigned',
+        message: `Your project group has been assigned a new guide by the Admin.`,
+        link: '/dashboard/student/my-group',
+      });
+    }
   } catch (error) {
     console.error('Failed to assign guide as admin:', error);
     throw new Error('Failed to assign guide');
@@ -194,102 +218,6 @@ export async function deleteProjectType(formData: FormData) {
   });
 
   revalidatePath('/dashboard/admin/project-types');
-}
-
-// ============== Academic Year Actions ==============
-const AcademicYearSchema = z.object({
-  yearName: z.string().min(2),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
-  isCurrent: z.coerce.boolean().optional(),
-});
-
-export async function createAcademicYear(formData: FormData) {
-  const session = await auth();
-  if (!session || (session.user as any)?.role !== 'admin') {
-    throw new Error('Unauthorized');
-  }
-
-  const validatedFields = AcademicYearSchema.safeParse({
-    yearName: formData.get('yearName'),
-    startDate: formData.get('startDate'),
-    endDate: formData.get('endDate'),
-    isCurrent: formData.get('isCurrent') === 'true',
-  });
-
-  if (!validatedFields.success) {
-    throw new Error('Invalid fields');
-  }
-
-  const { yearName, startDate, endDate, isCurrent } = validatedFields.data;
-
-  // If setting as current, unset other current years
-  if (isCurrent) {
-    await prisma.academic_year.updateMany({
-      where: { is_current: true },
-      data: { is_current: false },
-    });
-  }
-
-  await prisma.academic_year.create({
-    data: {
-      year_name: yearName,
-      start_date: startDate ? new Date(startDate) : null,
-      end_date: endDate ? new Date(endDate) : null,
-      is_current: isCurrent || false,
-    },
-  });
-
-  revalidatePath('/dashboard/admin/academic-years');
-}
-
-export async function updateAcademicYear(formData: FormData) {
-  const session = await auth();
-  if (!session || (session.user as any)?.role !== 'admin') {
-    throw new Error('Unauthorized');
-  }
-
-  const id = parseInt(formData.get('id') as string);
-  const yearName = formData.get('yearName') as string;
-  const startDate = formData.get('startDate') as string;
-  const endDate = formData.get('endDate') as string;
-  const isCurrent = formData.get('isCurrent') === 'true';
-
-  // If setting as current, unset other current years
-  if (isCurrent) {
-    await prisma.academic_year.updateMany({
-      where: { is_current: true, academic_year_id: { not: id } },
-      data: { is_current: false },
-    });
-  }
-
-  await prisma.academic_year.update({
-    where: { academic_year_id: id },
-    data: {
-      year_name: yearName,
-      start_date: startDate ? new Date(startDate) : null,
-      end_date: endDate ? new Date(endDate) : null,
-      is_current: isCurrent,
-      modified_at: new Date(),
-    },
-  });
-
-  revalidatePath('/dashboard/admin/academic-years');
-}
-
-export async function deleteAcademicYear(formData: FormData) {
-  const session = await auth();
-  if (!session || (session.user as any)?.role !== 'admin') {
-    throw new Error('Unauthorized');
-  }
-
-  const id = parseInt(formData.get('id') as string);
-
-  await prisma.academic_year.delete({
-    where: { academic_year_id: id },
-  });
-
-  revalidatePath('/dashboard/admin/academic-years');
 }
 
 // ============== Department Actions ==============

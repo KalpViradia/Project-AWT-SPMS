@@ -19,12 +19,13 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "SPMS - Student Project Management System",
-  description: "Manage your academic projects efficiently",
+  title: "Studionex | Empowering Academic Collaboration",
+  description: "Studionex is a modern platform designed to streamline academic collaboration, project tracking, and faculty evaluation.",
 };
 
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 export default function RootLayout({
   children,
@@ -42,8 +43,10 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
-          <Toaster />
+          <TooltipProvider delayDuration={0}>
+            {children}
+            <Toaster richColors closeButton />
+          </TooltipProvider>
         </ThemeProvider>
       </body>
     </html>

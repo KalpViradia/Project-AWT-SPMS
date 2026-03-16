@@ -47,6 +47,7 @@ interface ChatPanelProps {
     projectGroupId: number
     groupName: string
     currentUserId: number
+    currentUserName: string
     currentUserRole: string
     channel: "discussion" | "announcement"
     canSend: boolean      // true if user can create new messages
@@ -59,6 +60,7 @@ export function ChatPanel({
     projectGroupId,
     groupName,
     currentUserId,
+    currentUserName,
     currentUserRole,
     channel,
     canSend,
@@ -66,6 +68,7 @@ export function ChatPanel({
 }: ChatPanelProps) {
     const [messages, setMessages] = useState<Message[]>([])
     const [newMessage, setNewMessage] = useState("")
+    const [typingUsers, setTypingUsers] = useState<Record<number, string>>({})
     const [isPending, startTransition] = useTransition()
     const [isUploading, setIsUploading] = useState(false)
     const [replyTo, setReplyTo] = useState<ReplyTo | null>(null)
@@ -77,6 +80,7 @@ export function ChatPanel({
     const fileInputRef = useRef<HTMLInputElement>(null)
     const socket = useSocket()
     const prevGroupRef = useRef<number | null>(null)
+    const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
     // Fetch messages
     const fetchMessages = useCallback(async () => {
@@ -109,10 +113,51 @@ export function ChatPanel({
 
         socket.on("discussion:message", handler)
 
+        const typingHandler = ({ userId, userName, isTyping }: { userId: number, userName: string, isTyping: boolean }) => {
+            if (userId === currentUserId) return
+            setTypingUsers(prev => {
+                const next = { ...prev }
+                if (isTyping) {
+                    next[userId] = userName
+                } else {
+                    delete next[userId]
+                }
+                return next
+            })
+        }
+
+        socket.on("typing:update", typingHandler)
+
         return () => {
             socket.off("discussion:message", handler)
+            socket.off("typing:update", typingHandler)
         }
-    }, [socket, projectGroupId, channel])
+    }, [socket, projectGroupId, channel, currentUserId])
+
+    // Handling typing emission
+    const handleInputChange = (val: string) => {
+        setNewMessage(val)
+        if (!socket) return
+
+        // Emit typing status
+        socket.emit("typing", {
+            groupId: projectGroupId,
+            userId: currentUserId,
+            userName: currentUserName,
+            isTyping: val.length > 0
+        })
+
+        // Debounce stopping typing
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+        typingTimeoutRef.current = setTimeout(() => {
+            socket.emit("typing", {
+                groupId: projectGroupId,
+                userId: currentUserId,
+                userName: currentUserName,
+                isTyping: false
+            })
+        }, 3000)
+    }
 
     // Initial fetch
     useEffect(() => {
@@ -235,15 +280,33 @@ export function ChatPanel({
                 </div>
             </div>
 
+            {/* Click-away overlay for search (invisible) */}
+            {showSearch && (
+                <div 
+                    className="fixed inset-0 z-40 bg-transparent" 
+                    onClick={() => {
+                        if (!searchQuery.trim() && !searchResults) {
+                            setShowSearch(false)
+                        }
+                    }} 
+                />
+            )}
+
             {/* Search bar */}
             {showSearch && (
-                <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/10">
+                <div className="relative z-50 flex items-center gap-2 px-3 py-2 border-b bg-muted/10 animate-in slide-in-from-top-2 duration-200">
                     <Input
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                        onBlur={() => {
+                            if (!searchQuery.trim() && !searchResults) {
+                                setShowSearch(false)
+                            }
+                        }}
+                        autoFocus
                         placeholder="Search messages..."
-                        className="h-8 text-xs"
+                        className="h-8 text-xs flex-1"
                     />
                     <Button size="sm" variant="outline" className="h-8 text-xs" onClick={handleSearch}>
                         Search
@@ -420,6 +483,15 @@ export function ChatPanel({
                 </div>
             )}
 
+            {/* Typing indicator */}
+            <div className="px-4 py-1 h-6">
+                {Object.values(typingUsers).length > 0 && (
+                    <p className="text-[10px] text-muted-foreground italic animate-pulse">
+                        {Object.values(typingUsers).join(", ")} {Object.values(typingUsers).length === 1 ? "is" : "are"} typing...
+                    </p>
+                )}
+            </div>
+
             {/* Input (hidden if no send or reply permission) */}
             {(canSend || (canReply && replyTo)) && (
                 <form onSubmit={handleSend} className="flex items-center gap-2 border-t px-4 py-3">
@@ -442,7 +514,7 @@ export function ChatPanel({
                     </Button>
                     <Input
                         value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
+                        onChange={(e) => handleInputChange(e.target.value)}
                         placeholder={replyTo ? "Write a reply..." : "Type a message..."}
                         className="flex-1"
                         disabled={isPending}

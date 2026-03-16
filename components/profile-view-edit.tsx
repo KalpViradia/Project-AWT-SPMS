@@ -8,26 +8,35 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { SkillsTagInput } from "@/components/ui/skills-tag-input"
-import { Edit2, X } from "lucide-react"
+import { Edit2, X, Camera } from "lucide-react"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { FileUpload } from "@/components/ui/file-upload"
+import { useSession } from "next-auth/react"
 
 interface ProfileData {
     name: string;
     email: string;
     phone?: string | null;
     description?: string | null;
+    avatar_url?: string | null;
     skills?: string[];
+    department_id?: number | null;
+    department_name?: string | null;
 }
 
 interface ProfileViewEditProps {
     initialData: ProfileData;
-    action: (formData: FormData) => Promise<void>;
-    role: "student" | "faculty";
+    action: (formData: FormData) => Promise<{ success: boolean; avatarUrl?: string | null } | void>;
+    role: "student" | "faculty" | "admin";
+    departments?: { department_id: number; department_name: string }[];
 }
 
-export function ProfileViewEdit({ initialData, action, role }: ProfileViewEditProps) {
+export function ProfileViewEdit({ initialData, action, role, departments }: ProfileViewEditProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [isPending, setIsPending] = useState(false);
     const [phone, setPhone] = useState(initialData.phone?.replace(/\D/g, '').slice(0, 10) || '');
+    const [avatarFile, setAvatarFile] = useState<File | null>(null);
+    const { update } = useSession();
 
     // Handle phone input - only allow digits and max 10 characters
     function handlePhoneChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -41,9 +50,24 @@ export function ProfileViewEdit({ initialData, action, role }: ProfileViewEditPr
         event.preventDefault();
         setIsPending(true);
         const formData = new FormData(event.currentTarget);
+        
+        if (avatarFile) {
+            formData.append('avatarFile', avatarFile);
+        }
 
         try {
-            await action(formData);
+            const result = await action(formData);
+            
+            // Refresh session if a new avatar was uploaded
+            if (result && (result as any).avatarUrl) {
+                await update({
+                    image: (result as any).avatarUrl
+                });
+            } else if (result && (result as any).success) {
+                // Even if no new image, update might be needed for name/other fields if they are in session
+                await update();
+            }
+
             setIsEditing(false);
         } catch (error) {
             console.error("Failed to update profile:", error);
@@ -57,11 +81,19 @@ export function ProfileViewEdit({ initialData, action, role }: ProfileViewEditPr
             <Card>
                 <CardHeader>
                     <div className="flex items-center justify-between">
-                        <div>
-                            <CardTitle>Profile Information</CardTitle>
-                            <CardDescription>
-                                Your personal information and contact details.
-                            </CardDescription>
+                        <div className="flex items-center gap-4">
+                            <Avatar className="h-16 w-16">
+                                <AvatarImage src={initialData.avatar_url || ""} alt={initialData.name} />
+                                <AvatarFallback className="text-lg">
+                                    {initialData.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
+                                </AvatarFallback>
+                            </Avatar>
+                            <div>
+                                <CardTitle className="text-2xl">{initialData.name}</CardTitle>
+                                <CardDescription className="capitalize">
+                                    {role}
+                                </CardDescription>
+                            </div>
                         </div>
                         <Button
                             variant="outline"
@@ -76,10 +108,6 @@ export function ProfileViewEdit({ initialData, action, role }: ProfileViewEditPr
                 <CardContent className="space-y-6">
                     <div className="grid gap-6 md:grid-cols-2">
                         <div className="space-y-2">
-                            <Label className="text-sm font-medium text-muted-foreground">Name</Label>
-                            <p className="text-sm font-medium">{initialData.name}</p>
-                        </div>
-                        <div className="space-y-2">
                             <Label className="text-sm font-medium text-muted-foreground">Email</Label>
                             <p className="text-sm font-medium">{initialData.email}</p>
                         </div>
@@ -87,6 +115,12 @@ export function ProfileViewEdit({ initialData, action, role }: ProfileViewEditPr
                             <Label className="text-sm font-medium text-muted-foreground">Phone Number</Label>
                             <p className="text-sm font-medium">{initialData.phone || "Not provided"}</p>
                         </div>
+                        {role !== 'admin' && (
+                            <div className="space-y-2">
+                                <Label className="text-sm font-medium text-muted-foreground">Department</Label>
+                                <p className="text-sm font-medium">{initialData.department_name || "Not assigned"}</p>
+                            </div>
+                        )}
                     </div>
                     {initialData.description && (
                         <div className="space-y-2">
@@ -159,6 +193,17 @@ export function ProfileViewEdit({ initialData, action, role }: ProfileViewEditPr
                         </p>
                     </div>
 
+                    <div className="space-y-4">
+                        <Label>Profile Picture</Label>
+                        <FileUpload
+                            accept="image/*"
+                            value={avatarFile}
+                            onChange={setAvatarFile}
+                            label="Upload Profile Picture"
+                        />
+                        <input type="hidden" name="avatarUrl" value={initialData.avatar_url || ""} />
+                    </div>
+
                     <div className="space-y-2">
                         <Label htmlFor="phone">Phone Number</Label>
                         <Input
@@ -180,6 +225,25 @@ export function ProfileViewEdit({ initialData, action, role }: ProfileViewEditPr
                             </p>
                         )}
                     </div>
+
+                    {role !== 'admin' && departments && (
+                        <div className="space-y-2">
+                            <Label htmlFor="departmentId">Department</Label>
+                            <select
+                                id="departmentId"
+                                name="departmentId"
+                                defaultValue={initialData.department_id || ''}
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                <option value="">Select Department</option>
+                                {departments.map((dept) => (
+                                    <option key={dept.department_id} value={dept.department_id}>
+                                        {dept.department_name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
 
                     <div className="space-y-2">
                         <Label htmlFor="description">Bio / Description</Label>

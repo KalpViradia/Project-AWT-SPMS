@@ -29,12 +29,9 @@ export default async function ReportReviewsPage() {
 
     const staffId = parseInt(user.id)
 
+    console.log(`[ReportReviewsPage] Loading all reports...`);
+
     const reports = await prisma.weekly_report.findMany({
-        where: {
-            project_group: {
-                guide_staff_id: staffId
-            }
-        },
         include: {
             project_group: true
         },
@@ -44,6 +41,8 @@ export default async function ReportReviewsPage() {
             { submission_date: 'desc' }
         ]
     })
+
+    console.log(`[ReportReviewsPage] Found ${reports.length} reports.`);
 
     return (
         <div className="space-y-6">
@@ -68,15 +67,18 @@ export default async function ReportReviewsPage() {
                                 <div className="flex justify-between items-start">
                                     <div>
                                         <CardTitle className="text-lg">
-                                            {report.project_group.project_group_name}: Week {report.week_number}
+                                            {report.project_group.project_group_name}
                                         </CardTitle>
-                                        <CardDescription>
-                                            Submitted on {new Date(report.submission_date).toLocaleDateString()}
-                                            {report.marks !== null && (
-                                                <span className="ml-2 text-green-600 font-medium">
-                                                    • Marks: {report.marks}/100
-                                                </span>
-                                            )}
+                                        <CardDescription className="flex flex-col gap-1">
+                                            <span className="font-medium text-foreground">{report.project_group.project_title}</span>
+                                            <span>
+                                                Week {report.week_number} • Submitted on {new Date(report.submission_date).toLocaleDateString()}
+                                                {report.marks !== null && (
+                                                    <span className="ml-2 text-green-600 font-medium">
+                                                        • Marks: {report.marks}/100
+                                                    </span>
+                                                )}
+                                            </span>
                                         </CardDescription>
                                     </div>
                                     <Badge variant={report.status === 'pending' ? 'secondary' : 'default'}>

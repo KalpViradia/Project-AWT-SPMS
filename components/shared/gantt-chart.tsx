@@ -225,28 +225,32 @@ export function GanttChart({
                                             {/* Background track */}
                                             <div className="absolute inset-0 bg-muted/30 rounded" />
 
-                                            {/* Bar */}
-                                            <div
-                                                className="absolute top-1 bottom-1 rounded-md transition-all duration-300 overflow-hidden"
-                                                style={{
-                                                    left: `${leftPercent}%`,
-                                                    width: `${widthPercent}%`,
-                                                    backgroundColor: `${barColor}20`,
-                                                    border: `1.5px solid ${barColor}60`,
-                                                }}
+                                            {/* Bar Positioning Wrapper */}
+                                            <div 
+                                                className="absolute top-1 bottom-1 z-10"
+                                                style={{ left: `${leftPercent}%`, width: `${widthPercent}%` }}
                                             >
-                                                {/* Progress fill */}
+                                                {/* Visual Bar */}
                                                 <div
-                                                    className="absolute inset-0 rounded-md transition-all duration-500"
+                                                    className="absolute inset-0 rounded-md transition-all duration-300 overflow-hidden"
                                                     style={{
-                                                        width: `${m.progress}%`,
-                                                        backgroundColor: `${barColor}cc`,
+                                                        backgroundColor: `${barColor}20`,
+                                                        border: `1.5px solid ${barColor}60`,
                                                     }}
-                                                />
+                                                >
+                                                    {/* Progress fill */}
+                                                    <div
+                                                        className="absolute inset-y-0 left-0 transition-all duration-500"
+                                                        style={{
+                                                            width: `${m.progress}%`,
+                                                            backgroundColor: `${barColor}cc`,
+                                                        }}
+                                                    />
+                                                </div>
 
                                                 {/* Hover tooltip */}
-                                                <div className="absolute inset-0 flex items-center px-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <span className="text-[10px] font-medium text-foreground truncate drop-shadow-sm">
+                                                <div className="absolute inset-0 flex items-center px-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 overflow-visible">
+                                                    <span className="text-[10px] font-medium text-foreground whitespace-nowrap drop-shadow-sm bg-background/80 px-1 rounded ml-1">
                                                         {formatDate(m.start_date)} →{" "}
                                                         {formatDate(m.end_date)}
                                                     </span>

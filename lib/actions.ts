@@ -5,8 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
+import { uploadToCloudinary } from '@/lib/cloudinary';
 import { createNotification } from '@/lib/notification-actions';
 import bcrypt from 'bcryptjs';
 
@@ -124,30 +123,16 @@ export async function createGroup(formData: FormData) {
     } catch { projectSkillsArray = []; }
   }
 
-  // Check if student is already in a group
-  const existingMember = await prisma.project_group_member.findFirst({
-    where: { student_id: studentId }
-  });
-
-  if (existingMember) {
-      throw new Error("You are already in a group.");
-  }
-
   // Handle proposal file upload if present
   const proposalFile = formData.get('proposalFile') as File | null;
   let proposalFilePath: string | null = null;
 
   if (proposalFile && proposalFile.size > 0) {
-    const uploadDir = join(process.cwd(), 'public', 'uploads', 'proposals');
-    await mkdir(uploadDir, { recursive: true });
-    
-    const fileName = `${Date.now()}-${proposalFile.name}`;
-    proposalFilePath = `/uploads/proposals/${fileName}`;
-    
     const bytes = await proposalFile.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    await writeFile(join(process.cwd(), 'public', proposalFilePath), buffer);
+    proposalFilePath = await uploadToCloudinary(buffer, 'proposals', proposalFile.name, 'raw');
   }
+
 
   try {
       // Transaction to create group and add member
@@ -179,6 +164,15 @@ export async function createGroup(formData: FormData) {
                   created_at: new Date(),
                   modified_at: new Date(),
               }
+          });
+
+          // Notify faculty guide about the new proposal
+          await createNotification({
+              userId: parseInt(guideId),
+              userRole: 'faculty',
+              title: 'New Project Proposal',
+              message: `You have been assigned as a guide for "${projectTitle}" by ${groupName}.`,
+              link: '/dashboard/faculty/groups',
           });
       });
   } catch (error) {
@@ -234,7 +228,7 @@ export async function approveGroup(formData: FormData) {
   console.log('[approveGroup] Updating group:', { groupId, status, staffId, action });
 
   try {
-    await prisma.project_group.update({
+    const updatedGroup = await prisma.project_group.update({
       where: { project_group_id: groupId },
       data: {
         status: status,
@@ -242,9 +236,28 @@ export async function approveGroup(formData: FormData) {
         proposal_reviewed_by: staffId,
         rejection_reason: action === 'reject' ? rejectionReason : null,
         modified_at: new Date(),
+      },
+      include: {
+        project_group_member: {
+          include: { student: true }
+        }
       }
     });
-    console.log('[approveGroup] Successfully updated group status');
+
+    // Notify all group members about the decision
+    for (const member of updatedGroup.project_group_member) {
+      await createNotification({
+        userId: member.student_id,
+        userRole: 'student',
+        title: action === 'approve' ? 'Proposal Approved!' : 'Proposal Update',
+        message: action === 'approve' 
+          ? `Your project "${updatedGroup.project_title}" has been approved.` 
+          : `Your project proposal has been reviewed and requires changes.`,
+        link: '/dashboard/student/my-group',
+      });
+    }
+
+    console.log('[approveGroup] Successfully updated group status and notified members');
 
     // Save structured proposal feedback if provided
     const feedbackRaw = formData.get('proposalFeedback') as string | null;
@@ -297,7 +310,8 @@ export async function approveGroup(formData: FormData) {
 }
 
 const SubmitReportSchema = z.object({
-    weekNumber: z.coerce.number().min(1),
+    groupId: z.coerce.number(),
+    weekNumber: z.coerce.number().min(1, "Week number must be at least 1"),
     content: z.string().min(10, "Report content must be at least 10 characters long."),
 });
 
@@ -316,33 +330,37 @@ export async function submitReport(formData: FormData) {
     const studentId = parseInt(user.id);
 
     const validatedFields = SubmitReportSchema.safeParse({
+        groupId: formData.get('groupId'),
         weekNumber: formData.get('weekNumber'),
         content: formData.get('content'),
     });
 
     if (!validatedFields.success) {
-        throw new Error('Invalid fields');
+        const errors = validatedFields.error.flatten().fieldErrors;
+        const errorMessage = Object.values(errors).flat().join(", ");
+        throw new Error(errorMessage || "Invalid fields");
     }
 
-    const { weekNumber, content } = validatedFields.data;
+    const { groupId, weekNumber, content } = validatedFields.data;
 
-    // fetch student group
-    const studentWithGroup = await prisma.student.findUnique({
-        where: { student_id: studentId },
-        include: {
-            project_group_member: {
-                include: {
-                    project_group: true
-                }
+    // Verify student is actually in the group
+    const membership = await prisma.project_group_member.findUnique({
+        where: {
+            project_group_id_student_id: {
+                project_group_id: groupId,
+                student_id: studentId
             }
+        },
+        include: {
+            project_group: true
         }
     });
 
-    const group = studentWithGroup?.project_group_member[0]?.project_group;
-
-    if (!group) {
-        throw new Error("You must be in a project group to submit a report.");
+    if (!membership) {
+        throw new Error("You are not a member of this project group.");
     }
+
+    const group = membership.project_group;
 
     try {
         await prisma.weekly_report.create({
@@ -374,11 +392,12 @@ export async function submitReport(formData: FormData) {
     }
 
     revalidatePath('/dashboard/student/reports');
+    revalidatePath('/dashboard/faculty/reviews');
 }
 
 const ReviewReportSchema = z.object({
     reportId: z.coerce.number(),
-    feedback: z.string().min(1, "Feedback cannot be empty"),
+    feedback: z.string().optional().or(z.literal("")),
     marks: z.coerce.number().min(0).max(100).optional().nullable(),
     status: z.string().default("reviewed"),
 });
@@ -405,7 +424,9 @@ export async function updateReportFeedback(formData: FormData) {
     });
 
     if (!validatedFields.success) {
-        throw new Error('Invalid fields');
+        const errorMsg = validatedFields.error.issues.map(e => `${e.path.join('.')}: ${e.message}`).join(", ");
+        console.error("Report feedback validation failed:", errorMsg);
+        throw new Error(`Invalid fields: ${errorMsg}`);
     }
 
     const { reportId, feedback, marks: validatedMarks, status } = validatedFields.data;
@@ -446,7 +467,7 @@ export async function updateReportFeedback(formData: FormData) {
 const ScheduleMeetingSchema = z.object({
     projectGroupId: z.coerce.number(),
     meetingDate: z.string(), // Input type="datetime-local" returns string
-    meetingPurpose: z.string().min(3, "Purpose must be at least 3 characters."),
+    meetingPurpose: z.string().optional(),
     meetingLocation: z.string().optional(),
     description: z.string().optional(),
 });
@@ -570,6 +591,15 @@ export async function assignGuide(formData: FormData) {
                 modified_at: new Date()
             }
         });
+
+        // Notify the guide
+        await createNotification({
+            userId: parseInt(guideId),
+            userRole: 'faculty',
+            title: 'New Guide Assignment',
+            message: `You have been assigned as a guide for a project group.`,
+            link: '/dashboard/faculty/groups',
+        });
     } catch (error) {
         console.error("Failed to assign guide:", error);
         throw new Error("Failed to assign guide");
@@ -583,6 +613,8 @@ const UpdateStudentProfileSchema = z.object({
   phone: z.string().optional(),
   description: z.string().optional(),
   skills: z.string().optional(),
+  avatarUrl: z.string().optional().nullable(),
+  departmentId: z.coerce.number().optional().nullable(),
 });
 
 export async function updateStudentProfile(formData: FormData) {
@@ -604,13 +636,15 @@ export async function updateStudentProfile(formData: FormData) {
     phone: formData.get('phone'),
     description: formData.get('description'),
     skills: formData.get('skills'),
+    avatarUrl: formData.get('avatarUrl'),
+    departmentId: formData.get('departmentId'),
   });
 
   if (!validatedFields.success) {
     throw new Error("Invalid fields");
   }
 
-  const { name, phone, description, skills } = validatedFields.data;
+  const { name, phone, description, skills, avatarUrl, departmentId } = validatedFields.data;
 
   // Parse skills JSON string to array
   let skillsArray: string[] = [];
@@ -620,6 +654,19 @@ export async function updateStudentProfile(formData: FormData) {
     } catch { skillsArray = []; }
   }
 
+  // Normalize skills to lowercase
+  const normalizedSkills = skillsArray.map(s => s.toLowerCase());
+
+  // Handle avatar file upload
+  const avatarFile = formData.get('avatarFile') as File | null;
+  let finalAvatarUrl = avatarUrl || null;
+
+  if (avatarFile && avatarFile.size > 0) {
+    const bytes = await avatarFile.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+    finalAvatarUrl = await uploadToCloudinary(buffer, 'profiles', avatarFile.name, 'image');
+  }
+
   try {
     await prisma.student.update({
       where: { student_id: studentId },
@@ -627,7 +674,9 @@ export async function updateStudentProfile(formData: FormData) {
         student_name: name,
         phone: phone,
         description: description,
-        skills: skillsArray,
+        skills: normalizedSkills,
+        avatar_url: finalAvatarUrl,
+        department_id: departmentId || null,
         modified_at: new Date()
       }
     });
@@ -638,6 +687,8 @@ export async function updateStudentProfile(formData: FormData) {
 
   revalidatePath('/dashboard/student/settings');
   revalidatePath('/dashboard/student/profile'); // If profile page exists
+
+  return { success: true, avatarUrl: finalAvatarUrl };
 }
 
 const UpdateFacultyProfileSchema = z.object({
@@ -645,6 +696,8 @@ const UpdateFacultyProfileSchema = z.object({
   phone: z.string().optional(),
   description: z.string().optional(),
   skills: z.string().optional(),
+  avatarUrl: z.string().optional().nullable(),
+  departmentId: z.coerce.number().optional().nullable(),
 });
 
 export async function updateFacultyProfile(formData: FormData) {
@@ -655,7 +708,7 @@ export async function updateFacultyProfile(formData: FormData) {
 
   const user = session.user as { id: string; role?: string | null };
 
-  if (user.role !== 'faculty') {
+  if (user.role !== 'faculty' && user.role !== 'admin') {
     throw new Error("Unauthorized");
   }
 
@@ -666,13 +719,15 @@ export async function updateFacultyProfile(formData: FormData) {
     phone: formData.get('phone'),
     description: formData.get('description'),
     skills: formData.get('skills'),
+    avatarUrl: formData.get('avatarUrl'),
+    departmentId: formData.get('departmentId'),
   });
 
   if (!validatedFields.success) {
     throw new Error("Invalid fields");
   }
 
-  const { name, phone, description, skills } = validatedFields.data;
+  const { name, phone, description, skills, avatarUrl, departmentId } = validatedFields.data;
 
   // Parse skills JSON string to array
   let skillsArray: string[] = [];
@@ -682,6 +737,19 @@ export async function updateFacultyProfile(formData: FormData) {
     } catch { skillsArray = []; }
   }
 
+  // Normalize skills to lowercase
+  const normalizedSkills = skillsArray.map(s => s.toLowerCase());
+
+  // Handle avatar file upload
+  const avatarFile = formData.get('avatarFile') as File | null;
+  let finalAvatarUrl = avatarUrl || null;
+
+  if (avatarFile && avatarFile.size > 0) {
+    const bytes = await avatarFile.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+    finalAvatarUrl = await uploadToCloudinary(buffer, 'profiles', avatarFile.name, 'image');
+  }
+
   try {
     await prisma.staff.update({
       where: { staff_id: staffId },
@@ -689,7 +757,9 @@ export async function updateFacultyProfile(formData: FormData) {
         staff_name: name,
         phone: phone,
         description: description,
-        skills: skillsArray,
+        skills: normalizedSkills,
+        avatar_url: finalAvatarUrl,
+        department_id: departmentId || null,
         modified_at: new Date()
       }
     });
@@ -697,6 +767,9 @@ export async function updateFacultyProfile(formData: FormData) {
     console.error("Failed to update faculty profile:", error);
     throw new Error("Failed to update profile");
   }
+
+  revalidatePath('/dashboard/faculty/profile');
+  return { success: true, avatarUrl: finalAvatarUrl };
 }
 
 const UpdateMeetingSchema = z.object({
@@ -992,6 +1065,22 @@ export async function respondToInvitation(formData: FormData) {
             modified_at: new Date(),
           },
         });
+
+        // Notify group leader about the new member
+        const leader = await tx.project_group_member.findFirst({
+          where: { project_group_id: invitation.project_group_id, is_group_leader: true }
+        });
+        
+        if (leader) {
+          const student = await tx.student.findUnique({ where: { student_id: studentId } });
+          await createNotification({
+            userId: leader.student_id,
+            userRole: 'student',
+            title: 'Invitation Accepted',
+            message: `${student?.student_name || 'A student'} has accepted your invitation and joined the group.`,
+            link: '/dashboard/student/my-group',
+          });
+        }
       });
     }
   } catch (error) {
@@ -1004,6 +1093,7 @@ export async function respondToInvitation(formData: FormData) {
 
 const UploadDocumentSchema = z.object({
   groupId: z.coerce.number(),
+  documentId: z.coerce.number().optional().nullable(),
   title: z.string().min(3, "Title must be at least 3 characters"),
 });
 
@@ -1039,6 +1129,7 @@ export async function uploadDocument(formData: FormData) {
 
   const validatedFields = UploadDocumentSchema.safeParse({
     groupId: formData.get('groupId'),
+    documentId: formData.get('documentId'),
     title: formData.get('title'),
   });
 
@@ -1046,7 +1137,7 @@ export async function uploadDocument(formData: FormData) {
     throw new Error("Invalid fields");
   }
 
-  const { groupId, title } = validatedFields.data;
+  const { groupId, documentId, title } = validatedFields.data;
 
   // Verify membership
   const studentId = parseInt(user.id);
@@ -1067,31 +1158,43 @@ export async function uploadDocument(formData: FormData) {
       const bytes = await file.arrayBuffer();
       const buffer = Buffer.from(bytes);
 
-      // Ensure upload directory exists
-      const uploadDir = join(process.cwd(), 'public', 'uploads');
-      try {
-        await mkdir(uploadDir, { recursive: true });
-      } catch (e) {
-          // Ignore if exists
+      const publicPath = await uploadToCloudinary(buffer, 'documents', file.name, 'raw');
+
+      if (documentId) {
+        await prisma.project_document.update({
+          where: { document_id: documentId },
+          data: {
+            file_path: publicPath,
+            status: 'Submitted', // Reset status on replacement
+            modified_at: new Date(),
+          }
+        });
+      } else {
+        await prisma.project_document.create({
+            data: {
+                project_group_id: groupId,
+                title: title,
+                file_path: publicPath,
+                uploaded_at: new Date()
+            }
+        });
       }
 
-      // Sanitize filename
-      const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '');
-      const fileName = `${Date.now()}-${safeName}`;
-      const filePath = join(uploadDir, fileName);
-
-      await writeFile(filePath, buffer);
-      
-      const publicPath = `/uploads/${fileName}`;
-
-      await prisma.project_document.create({
-          data: {
-              project_group_id: groupId,
-              title: title,
-              file_path: publicPath,
-              uploaded_at: new Date()
-          }
+      // Notify the guide about the new/updated document
+      const group = await prisma.project_group.findUnique({
+          where: { project_group_id: groupId },
+          select: { guide_staff_id: true, project_group_name: true }
       });
+
+      if (group?.guide_staff_id) {
+          await createNotification({
+              userId: group.guide_staff_id,
+              userRole: 'faculty',
+              title: documentId ? 'Document Updated' : 'New Document Uploaded',
+              message: `Group "${group.project_group_name}" ${documentId ? 'updated' : 'uploaded'} a document: ${title}`,
+              link: '/dashboard/faculty/groups',
+          });
+      }
 
   } catch (error) {
       console.error("Failed to upload document:", error);
@@ -1100,6 +1203,82 @@ export async function uploadDocument(formData: FormData) {
 
   revalidatePath('/dashboard/student/my-group');
   revalidatePath(`/dashboard/faculty/groups/${groupId}`);
+}
+
+const UpdateProjectDetailsSchema = z.object({
+  groupId: z.coerce.number(),
+  title: z.string().min(3),
+  description: z.string().optional(),
+  objectives: z.string().optional(),
+  methodology: z.string().optional(),
+  outcomes: z.string().optional(),
+});
+
+export async function updateProjectDetails(formData: FormData) {
+  const session = await auth();
+  if (!session || !session.user) {
+    throw new Error("Unauthorized");
+  }
+
+  const user = session.user as { id: string; role?: string | null };
+  const studentId = parseInt(user.id);
+
+  const validatedFields = UpdateProjectDetailsSchema.safeParse({
+    groupId: formData.get('groupId'),
+    title: formData.get('title'),
+    description: formData.get('description'),
+    objectives: formData.get('objectives'),
+    methodology: formData.get('methodology'),
+    outcomes: formData.get('outcomes'),
+  });
+
+  if (!validatedFields.success) {
+    throw new Error("Invalid fields");
+  }
+
+  const { groupId, title, description, objectives, methodology, outcomes } = validatedFields.data;
+
+  // Verify leader status
+  const membership = await prisma.project_group_member.findUnique({
+    where: {
+      project_group_id_student_id: {
+        project_group_id: groupId,
+        student_id: studentId
+      }
+    }
+  });
+
+  if (!membership || !membership.is_group_leader) {
+    throw new Error("Only the group leader can edit project details.");
+  }
+
+  const updatedGroup = await prisma.project_group.update({
+    where: { project_group_id: groupId },
+    data: {
+      project_title: title,
+      project_description: description || null,
+      project_objectives: objectives || null,
+      project_methodology: methodology || null,
+      project_expected_outcomes: outcomes || null,
+      modified_at: new Date(),
+    }
+  });
+
+  // Notify the guide
+  if (updatedGroup.guide_staff_id) {
+    await createNotification({
+      userId: updatedGroup.guide_staff_id,
+      userRole: 'faculty',
+      title: 'Project Details Updated',
+      message: `The details for project "${title}" have been updated by the group leader.`,
+      link: `/dashboard/faculty/groups/${groupId}`,
+    });
+  }
+
+  revalidatePath('/dashboard/student/project-details');
+  revalidatePath(`/dashboard/faculty/groups/${groupId}`);
+  
+  return { success: true };
 }
 
 // ============================================
@@ -1122,17 +1301,22 @@ export async function searchStudentsBySkills(skills: string[]) {
     return [];
   }
 
+  const lowerSkills = skills.map(s => s.toLowerCase());
+
   try {
     const students = await prisma.student.findMany({
       where: {
         skills: {
-          hasSome: skills,
+          hasSome: lowerSkills,
         },
       },
       select: {
         student_id: true,
         student_name: true,
         email: true,
+        phone: true,
+        description: true,
+        avatar_url: true,
         skills: true,
         project_group_member: {
           select: {
@@ -1152,6 +1336,9 @@ export async function searchStudentsBySkills(skills: string[]) {
       student_id: s.student_id,
       student_name: s.student_name,
       email: s.email,
+      phone: (s as any).phone,
+      description: (s as any).description,
+      avatar_url: (s as any).avatar_url,
       skills: s.skills,
       group: s.project_group_member.length > 0
         ? {

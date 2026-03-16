@@ -19,8 +19,10 @@ export function SocketProvider({ userId, userRole, children }: SocketProviderPro
     const [socket, setSocket] = useState<Socket | null>(null)
 
     useEffect(() => {
-        const s = io({
-            path: "/api/socketio",
+        // Connect to the standalone Socket.IO server (Render in production)
+        const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:4000"
+
+        const s = io(socketUrl, {
             transports: ["websocket", "polling"],
         })
 

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { getFacultyGroups } from "@/lib/discussion-actions"
 import { ChatPanel } from "@/components/shared/chat-panel"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { SearchSelect } from "@/components/ui/search-select"
 import { Card, CardContent } from "@/components/ui/card"
 import { MessageSquare } from "lucide-react"
 import { useSession } from "next-auth/react"
@@ -18,6 +18,7 @@ export default function FacultyDiscussionPage() {
     const { data: session } = useSession()
     const [groups, setGroups] = useState<Group[]>([])
     const [selectedGroupId, setSelectedGroupId] = useState<string>("")
+    const [open, setOpen] = useState(false)
 
     useEffect(() => {
         getFacultyGroups().then((g) => setGroups(g))
@@ -25,6 +26,7 @@ export default function FacultyDiscussionPage() {
 
     const selectedGroup = groups.find((g) => g.project_group_id === parseInt(selectedGroupId))
     const userId = parseInt((session?.user as any)?.id || "0")
+    const userName = session?.user?.name || "Faculty"
 
     return (
         <div className="flex flex-col gap-4">
@@ -36,18 +38,15 @@ export default function FacultyDiscussionPage() {
             </div>
 
             <div className="max-w-xs">
-                <Select value={selectedGroupId} onValueChange={setSelectedGroupId}>
-                    <SelectTrigger>
-                        <SelectValue placeholder="Select a group..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {groups.map((g) => (
-                            <SelectItem key={g.project_group_id} value={String(g.project_group_id)}>
-                                {g.project_group_name}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+                <SearchSelect
+                    items={groups.map(g => ({
+                        label: g.project_group_name,
+                        value: g.project_group_id.toString()
+                    }))}
+                    value={selectedGroupId}
+                    onValueChange={setSelectedGroupId}
+                    placeholder="Search and select group..."
+                />
             </div>
 
             {selectedGroup ? (
@@ -56,6 +55,7 @@ export default function FacultyDiscussionPage() {
                     projectGroupId={selectedGroup.project_group_id}
                     groupName={selectedGroup.project_group_name}
                     currentUserId={userId}
+                    currentUserName={userName}
                     currentUserRole="faculty"
                     channel="announcement"
                     canSend={true}

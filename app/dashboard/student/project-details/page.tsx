@@ -7,6 +7,8 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ProposalStatusBadge } from "@/components/student/proposal-status-badge"
 import { Badge } from "@/components/ui/badge"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { EditProjectDetailsDialog } from "@/components/student/edit-project-details-dialog"
 
 export default async function ProjectDetailsPage() {
     const session = await auth()
@@ -16,8 +18,8 @@ export default async function ProjectDetailsPage() {
 
     const studentId = parseInt((session.user as any).id)
 
-    // Fetch student's group with full details
-    const membership = await prisma.project_group_member.findFirst({
+    // Fetch student's groups with full details
+    const memberships = await prisma.project_group_member.findMany({
         where: { student_id: studentId },
         include: {
             project_group: {
@@ -30,7 +32,7 @@ export default async function ProjectDetailsPage() {
         }
     })
 
-    if (!membership || !membership.project_group) {
+    if (memberships.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
                 <p className="text-muted-foreground">You are not part of any project group.</p>
@@ -41,167 +43,179 @@ export default async function ProjectDetailsPage() {
         )
     }
 
-    const group = membership.project_group
-
     return (
-        <div className="space-y-6">
-            <div className="flex items-center gap-4">
-                <Button variant="outline" size="icon" asChild>
-                    <Link href="/dashboard/student/my-group">
-                        <ArrowLeft className="h-4 w-4" />
-                    </Link>
-                </Button>
-                <div className="flex-1">
-                    <h1 className="text-3xl font-bold tracking-tight">{group.project_title}</h1>
-                    <div className="flex items-center gap-2 mt-1">
-                        <Badge variant="outline">{group.project_type.project_type_name}</Badge>
-                        <ProposalStatusBadge status={group.status} />
-                    </div>
-                </div>
-            </div>
+        <div className="space-y-12 shrink-0">
+            {memberships.map((membership) => {
+                const group = membership.project_group;
 
-            <div className="grid gap-6 md:grid-cols-3">
-                <Card className="md:col-span-2">
-                    <CardHeader>
-                        <CardTitle>Project Overview</CardTitle>
-                        <CardDescription>Detailed information about your project proposal</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        <div>
-                            <h3 className="text-sm font-semibold mb-2">Description</h3>
-                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                                {group.project_description || "No description provided."}
-                            </p>
+                return (
+                    <div key={group.project_group_id} className="space-y-6 pt-6 border-t first:border-t-0 first:pt-0">
+                        <div className="flex items-center gap-4">
+                            <Button variant="outline" size="icon" asChild>
+                                <Link href="/dashboard/student/my-group">
+                                    <ArrowLeft className="h-4 w-4" />
+                                </Link>
+                            </Button>
+                            <div className="flex-1">
+                                <h1 className="text-3xl font-bold tracking-tight">{group.project_title}</h1>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <Badge variant="outline">{group.project_type.project_type_name}</Badge>
+                                    <ProposalStatusBadge status={group.status} />
+                                </div>
+                            </div>
+                            {membership.is_group_leader && (
+                                <EditProjectDetailsDialog project={{
+                                    project_group_id: group.project_group_id,
+                                    project_title: group.project_title,
+                                    project_description: group.project_description,
+                                    project_objectives: group.project_objectives,
+                                    project_methodology: group.project_methodology,
+                                    project_expected_outcomes: group.project_expected_outcomes,
+                                }} />
+                            )}
                         </div>
 
-                        {group.project_objectives && (
-                            <div>
-                                <h3 className="text-sm font-semibold mb-2">Objectives</h3>
-                                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                                    {group.project_objectives}
-                                </p>
-                            </div>
-                        )}
-
-                        {group.project_methodology && (
-                            <div>
-                                <h3 className="text-sm font-semibold mb-2">Methodology</h3>
-                                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                                    {group.project_methodology}
-                                </p>
-                            </div>
-                        )}
-
-                        {group.project_expected_outcomes && (
-                            <div>
-                                <h3 className="text-sm font-semibold mb-2">Expected Outcomes</h3>
-                                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                                    {group.project_expected_outcomes}
-                                </p>
-                            </div>
-                        )}
-
-                        {group.proposal_file_path && (
-                            <div>
-                                <h3 className="text-sm font-semibold mb-2">Proposal Document</h3>
-                                <Button variant="outline" size="sm" asChild>
-                                    <a href={group.proposal_file_path} target="_blank" rel="noopener noreferrer">
-                                        Download Proposal
-                                    </a>
-                                </Button>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-
-                <div className="space-y-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Project Guide</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            {group.staff_project_group_guide_staff_idTostaff ? (
-                                <div className="flex items-center gap-3">
-                                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                                        <User className="h-5 w-5 text-primary" />
-                                    </div>
+                        <div className="grid gap-6 md:grid-cols-3">
+                            <Card className="md:col-span-2">
+                                <CardHeader>
+                                    <CardTitle>Project Overview</CardTitle>
+                                    <CardDescription>Detailed information about your project proposal</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-6">
                                     <div>
-                                        <p className="text-sm font-medium">
-                                            {group.staff_project_group_guide_staff_idTostaff.staff_name}
-                                        </p>
-                                        <p className="text-xs text-muted-foreground">
-                                            {group.staff_project_group_guide_staff_idTostaff.email}
+                                        <h3 className="text-sm font-semibold mb-2">Description</h3>
+                                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                                            {group.project_description || "No description provided."}
                                         </p>
                                     </div>
-                                </div>
-                            ) : (
-                                <p className="text-sm text-muted-foreground">No guide assigned yet</p>
-                            )}
-                        </CardContent>
-                    </Card>
 
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Timeline</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex items-start gap-3">
-                                <Calendar className="h-4 w-4 text-muted-foreground mt-0.5" />
-                                <div>
-                                    <p className="text-sm font-medium">Submitted</p>
-                                    <p className="text-xs text-muted-foreground">
-                                        {group.proposal_submitted_at
-                                            ? new Date(group.proposal_submitted_at).toLocaleDateString('en-US', {
-                                                year: 'numeric',
-                                                month: 'long',
-                                                day: 'numeric'
-                                            })
-                                            : new Date(group.created_at).toLocaleDateString('en-US', {
-                                                year: 'numeric',
-                                                month: 'long',
-                                                day: 'numeric'
-                                            })}
-                                    </p>
-                                </div>
-                            </div>
-
-                            {group.proposal_reviewed_at && (
-                                <div className="flex items-start gap-3">
-                                    <Calendar className="h-4 w-4 text-muted-foreground mt-0.5" />
-                                    <div>
-                                        <p className="text-sm font-medium">
-                                            {group.status === 'approved' ? 'Approved' : 'Reviewed'}
-                                        </p>
-                                        <p className="text-xs text-muted-foreground">
-                                            {new Date(group.proposal_reviewed_at).toLocaleDateString('en-US', {
-                                                year: 'numeric',
-                                                month: 'long',
-                                                day: 'numeric'
-                                            })}
-                                        </p>
-                                        {group.staff_project_group_reviewed_byTostaff && (
-                                            <p className="text-xs text-muted-foreground">
-                                                by {group.staff_project_group_reviewed_byTostaff.staff_name}
+                                    {group.project_objectives && (
+                                        <div>
+                                            <h3 className="text-sm font-semibold mb-2">Objectives</h3>
+                                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                                                {group.project_objectives}
                                             </p>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
+                                        </div>
+                                    )}
 
-                    {group.status === 'rejected' && group.rejection_reason && (
-                        <Card className="border-destructive">
-                            <CardHeader>
-                                <CardTitle className="text-destructive">Rejection Reason</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <p className="text-sm">{group.rejection_reason}</p>
-                            </CardContent>
-                        </Card>
-                    )}
-                </div>
-            </div>
+                                    {group.project_methodology && (
+                                        <div>
+                                            <h3 className="text-sm font-semibold mb-2">Methodology</h3>
+                                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                                                {group.project_methodology}
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {group.project_expected_outcomes && (
+                                        <div>
+                                            <h3 className="text-sm font-semibold mb-2">Expected Outcomes</h3>
+                                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                                                {group.project_expected_outcomes}
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {group.proposal_file_path && (
+                                        <div>
+                                            <h3 className="text-sm font-semibold mb-2">Proposal Document</h3>
+                                            <Button variant="outline" size="sm" asChild>
+                                                <a href={group.proposal_file_path} target="_blank" rel="noopener noreferrer">
+                                                    Download Proposal
+                                                </a>
+                                            </Button>
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+
+                            <div className="space-y-6">
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Project Guide</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        {group.staff_project_group_guide_staff_idTostaff ? (
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                                    <User className="h-5 w-5 text-primary" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-medium">
+                                                        {group.staff_project_group_guide_staff_idTostaff.staff_name}
+                                                    </p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {group.staff_project_group_guide_staff_idTostaff.email}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <p className="text-sm text-muted-foreground">No guide assigned yet</p>
+                                        )}
+                                    </CardContent>
+                                </Card>
+
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Timeline</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <div className="flex items-start gap-3">
+                                            <Calendar className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                            <div>
+                                                <p className="text-sm font-medium">Submitted</p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {group.proposal_submitted_at
+                                                        ? new Date(group.proposal_submitted_at).toLocaleDateString('en-US', {
+                                                            year: 'numeric',
+                                                            month: 'long',
+                                                            day: 'numeric'
+                                                        })
+                                                        : new Date(group.created_at).toLocaleDateString('en-US', {
+                                                            year: 'numeric',
+                                                            month: 'long',
+                                                            day: 'numeric'
+                                                        })}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {group.proposal_reviewed_at && (
+                                            <div className="flex items-start gap-3">
+                                                <Calendar className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                                <div>
+                                                    <p className="text-sm font-medium">
+                                                        {group.status === 'approved' ? 'Approved' : 'Reviewed'}
+                                                    </p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {new Date(group.proposal_reviewed_at).toLocaleDateString('en-US', {
+                                                            year: 'numeric',
+                                                            month: 'long',
+                                                            day: 'numeric'
+                                                        })}
+                                                    </p>
+                                                    {group.staff_project_group_reviewed_byTostaff && (
+                                                        <p className="text-xs text-muted-foreground">
+                                                            by {group.staff_project_group_reviewed_byTostaff.staff_name}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+
+                                {group.status === 'rejected' && group.rejection_reason && (
+                                    <Alert variant="destructive">
+                                        <AlertTitle>Rejection Reason</AlertTitle>
+                                        <AlertDescription>{group.rejection_reason}</AlertDescription>
+                                    </Alert>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )
+            })}
         </div>
     )
 }
