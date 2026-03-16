@@ -32,45 +32,56 @@ export function SocketProvider({ userId, userRole, children }: SocketProviderPro
 
     useEffect(() => {
         const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:4000"
-        let pingInterval: NodeJS.Timeout
+        let retryCount = 0
+        const MAX_RETRIES = 5
+        let currentTimeout: NodeJS.Timeout
 
         const checkBackend = async () => {
+            if (retryCount >= MAX_RETRIES) {
+                setIsWaking(false)
+                return
+            }
+
             try {
-                // Lightweight health check
                 const res = await fetch(`${socketUrl}/health`, { 
                     method: "GET",
-                    signal: AbortSignal.timeout(5000) 
+                    signal: AbortSignal.timeout(5000),
+                    mode: 'cors'
                 })
+
                 if (res.ok) {
                     setIsLive(true)
                     setIsWaking(false)
-                    clearInterval(pingInterval)
                 } else {
-                    throw new Error("Backend not ok")
+                    throw new Error("Backend not responding")
                 }
-            } catch (err) {
-                // If failed, assume backend is waking up (cold start)
+            } catch (err: any) {
+                // If CORS error (type 'error' and no status), or other network failure
+                if (err.name === 'TypeError' && err.message === 'Failed to fetch') {
+                    console.error("[Socket.IO] Potential CORS or network error. Stopping retries.")
+                    setIsWaking(false)
+                    return
+                }
+
+                retryCount++
                 setIsWaking(true)
                 setIsLive(false)
+                
+                currentTimeout = setTimeout(checkBackend, 5000)
             }
         }
 
-        // Start checking immediately
+        // Start checking once on mount
         checkBackend()
-        
-        // Interval for retries if not live
-        pingInterval = setInterval(() => {
-            if (!isLive) checkBackend()
-        }, 3000)
 
         const s = io(socketUrl, {
             transports: ["websocket", "polling"],
         })
 
         s.on("connect", () => {
-            console.log("[Socket.IO] Connected:", s.id)
             setIsLive(true)
             setIsWaking(false)
+            if (currentTimeout) clearTimeout(currentTimeout)
             s.emit("join:user", { userId, userRole })
         })
 
@@ -82,9 +93,9 @@ export function SocketProvider({ userId, userRole, children }: SocketProviderPro
 
         return () => {
             s.disconnect()
-            clearInterval(pingInterval)
+            if (currentTimeout) clearTimeout(currentTimeout)
         }
-    }, [userId, userRole, isLive])
+    }, [userId, userRole]) // stable dependencies
 
     return (
         <SocketContext.Provider value={{ socket, isLive, isWaking }}>

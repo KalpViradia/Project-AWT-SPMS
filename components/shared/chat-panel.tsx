@@ -41,6 +41,7 @@ type Message = {
     reply_to: ReplyTo | null
     reactions: Reaction[]
     _channel?: string
+    _optimistic?: boolean
 }
 
 interface ChatPanelProps {
@@ -78,7 +79,7 @@ export function ChatPanel({
     const [attachment, setAttachment] = useState<{ url: string; type: string; name: string } | null>(null)
     const scrollRef = useRef<HTMLDivElement>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
-    const { socket, isWaking } = useSocket()
+    const { socket, isLive, isWaking } = useSocket()
     const prevGroupRef = useRef<number | null>(null)
     const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -213,6 +214,26 @@ export function ChatPanel({
         e.preventDefault()
         if (!newMessage.trim() && !attachment) return
 
+        const tempId = Date.now()
+        const optimisticMsg: Message = {
+            message_id: tempId,
+            sender_id: currentUserId,
+            sender_role: currentUserRole,
+            sender_name: currentUserName,
+            content: newMessage,
+            channel: channel,
+            reply_to_id: replyTo ? replyTo.message_id : null,
+            attachment_url: attachment?.url || null,
+            attachment_type: attachment?.type || null,
+            created_at: new Date().toISOString(),
+            reply_to: replyTo,
+            reactions: [],
+            _optimistic: true // marker for UI
+        }
+
+        // Optimistically add to UI
+        setMessages(prev => [...prev, optimisticMsg])
+        
         const formData = new FormData()
         formData.set("content", newMessage)
         formData.set("projectGroupId", String(projectGroupId))
@@ -223,13 +244,20 @@ export function ChatPanel({
             formData.set("attachmentType", attachment.type)
         }
 
+        const messageText = newMessage
+        setNewMessage("")
+        setReplyTo(null)
+        setAttachment(null)
+
         startTransition(async () => {
             try {
-                await sendDiscussionMessage(formData)
-                setNewMessage("")
-                setReplyTo(null)
-                setAttachment(null)
+                const created = await sendDiscussionMessage(formData)
+                // Replace optimistic message with real one
+                setMessages(prev => prev.map(m => m.message_id === tempId ? { ...created as Message, _optimistic: false } : m))
             } catch (err: any) {
+                // Rollback on error
+                setMessages(prev => prev.filter(m => m.message_id !== tempId))
+                setNewMessage(messageText) // Restore text
                 toast.error(err.message || "Failed to send message")
             }
         })
@@ -267,8 +295,8 @@ export function ChatPanel({
 
     return (
         <div className="flex flex-col h-[550px] border rounded-lg overflow-hidden bg-card transition-all duration-300">
-            {/* Wake-up Banner */}
-            {isWaking && (
+            {/* Wake-up Banner - Show only if waking and not live */}
+            {isWaking && !isLive && (
                 <div className="bg-primary/10 border-b px-4 py-2 flex items-center justify-center gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
                     <Loader2 className="h-3 w-3 animate-spin text-primary" />
                     <p className="text-[11px] font-medium text-primary tracking-wide">
@@ -410,9 +438,17 @@ export function ChatPanel({
                                     )}
 
                                     {/* Timestamp */}
-                                    <p className={`text-[10px] mt-1 ${isOwn(msg) ? "text-primary-foreground/60" : "text-muted-foreground/60"}`}>
-                                        {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}
-                                    </p>
+                                    <div className="flex items-center gap-1.5 mt-1">
+                                        <p className={`text-[10px] ${isOwn(msg) ? "text-primary-foreground/60" : "text-muted-foreground/60"}`}>
+                                            {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}
+                                        </p>
+                                        {msg._optimistic && (
+                                            <span className="flex items-center gap-1 text-[10px] italic opacity-70">
+                                                <Loader2 className="h-2 w-2 animate-spin" />
+                                                Sending...
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
 
                                 {/* Reactions display */}
@@ -522,18 +558,18 @@ export function ChatPanel({
                         size="icon"
                         className="h-8 w-8 shrink-0"
                         onClick={() => fileInputRef.current?.click()}
-                        disabled={isPending || isUploading}
+                        disabled={isPending || isUploading || (isWaking && !isLive)}
                     >
                         {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
                     </Button>
                     <Input
                         value={newMessage}
                         onChange={(e) => handleInputChange(e.target.value)}
-                        placeholder={replyTo ? "Write a reply..." : "Type a message..."}
+                        placeholder={isWaking && !isLive ? "Server is waking up..." : (replyTo ? "Write a reply..." : "Type a message...")}
                         className="flex-1"
-                        disabled={isPending}
+                        disabled={isPending || (isWaking && !isLive)}
                     />
-                    <Button type="submit" size="icon" disabled={isPending || (!newMessage.trim() && !attachment)}>
+                    <Button type="submit" size="icon" disabled={isPending || (!newMessage.trim() && !attachment) || (isWaking && !isLive)}>
                         {isPending ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (

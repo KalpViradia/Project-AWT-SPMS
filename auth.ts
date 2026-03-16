@@ -50,7 +50,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           }
         }
         
-        console.log('Invalid credentials');
         return null;
       },
     }),

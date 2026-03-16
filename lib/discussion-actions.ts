@@ -96,11 +96,15 @@ export async function sendDiscussionMessage(formData: FormData) {
             }
         })
 
-        // Broadcast via WebSocket
-        await emitDiscussionMessage(projectGroupId, {
-            ...created,
-            _channel: channel,
-        })
+        // Broadcast via WebSocket (do not crash if socket fails)
+        try {
+            await emitDiscussionMessage(projectGroupId, {
+                ...created,
+                _channel: channel,
+            })
+        } catch (socketError) {
+            console.error("Socket emit failed:", socketError)
+        }
 
         revalidatePath('/dashboard/student/discussion')
         revalidatePath('/dashboard/faculty/discussion')

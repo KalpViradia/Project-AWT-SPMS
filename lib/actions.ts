@@ -207,13 +207,11 @@ export async function approveGroup(formData: FormData) {
     throw new Error("Unauthorized");
   }
 
-  // Log incoming form data for debugging
   const rawData = {
     groupId: formData.get('groupId'),
     action: formData.get('action'),
     rejectionReason: formData.get('rejectionReason'),
   };
-  console.log('[approveGroup] Raw form data:', rawData);
 
   const validatedFields = ApproveGroupSchema.safeParse(rawData);
 
@@ -225,7 +223,6 @@ export async function approveGroup(formData: FormData) {
   const { groupId, action, rejectionReason } = validatedFields.data;
   const status = action === 'approve' ? 'approved' : 'rejected';
   const staffId = parseInt(user.id);
-  console.log('[approveGroup] Updating group:', { groupId, status, staffId, action });
 
   try {
     const updatedGroup = await prisma.project_group.update({
@@ -257,7 +254,7 @@ export async function approveGroup(formData: FormData) {
       });
     }
 
-    console.log('[approveGroup] Successfully updated group status and notified members');
+    // Notify all group members about the decision
 
     // Save structured proposal feedback if provided
     const feedbackRaw = formData.get('proposalFeedback') as string | null;
@@ -292,7 +289,6 @@ export async function approveGroup(formData: FormData) {
             section_comments: sectionComments ? JSON.stringify(sectionComments) : null,
           },
         });
-        console.log('[approveGroup] Saved structured feedback');
       } catch (e) {
         console.error('[approveGroup] Failed to save feedback:', e);
         // Don't fail the main action

@@ -14,6 +14,7 @@ async function relayEmit(room: string, event: string, data: unknown) {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ secret: EMIT_SECRET, room, event, data }),
+            signal: AbortSignal.timeout(5000)
         })
     } catch (err) {
         console.error("[socket-emitter] Failed to relay event:", err)

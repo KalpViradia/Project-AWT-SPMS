@@ -172,19 +172,22 @@ export function KeyboardShortcutsProvider({ role, children }: KeyboardShortcutsP
         <>
             {children}
 
-            {/* Floating shortcut trigger button */}
-            <button
-                onClick={() => setOpen(true)}
-                className="fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-full border border-border bg-background/80 backdrop-blur-sm px-3 py-2 text-xs text-muted-foreground shadow-lg hover:text-foreground hover:border-primary/50 hover:shadow-xl transition-all duration-200 group"
-                title="Keyboard shortcuts (Ctrl + /)"
-            >
-                <Keyboard className="h-4 w-4 group-hover:text-primary transition-colors" />
-                <span className="hidden sm:inline">
-                    <kbd className="inline-flex items-center rounded border bg-muted px-1 py-0.5 font-mono text-[10px]">Ctrl</kbd>
-                    {" "}
-                    <kbd className="inline-flex items-center rounded border bg-muted px-1 py-0.5 font-mono text-[10px]">/</kbd>
-                </span>
-            </button>
+            {/* Floating shortcut trigger button - Bottom Left, Expand on hover */}
+            <div className="fixed bottom-4 left-[18px] z-50 flex items-center group">
+                <button
+                    onClick={() => setOpen(true)}
+                    className="flex items-center gap-0 overflow-hidden rounded-full border border-border bg-background/80 backdrop-blur-sm p-2.5 text-xs text-muted-foreground shadow-lg hover:text-foreground hover:border-primary/50 hover:shadow-xl transition-all duration-300 ease-in-out group-hover:gap-2 group-hover:px-4"
+                    title="Keyboard shortcuts (Ctrl + /)"
+                >
+                    <Keyboard className="h-4 w-4 shrink-0 transition-colors group-hover:text-primary" />
+                    <span className="max-w-0 opacity-0 whitespace-nowrap transition-all duration-300 ease-in-out group-hover:max-w-[100px] group-hover:opacity-100">
+                        <span className="flex items-center gap-1.5 ml-1">
+                            <kbd className="inline-flex items-center rounded border bg-muted px-1 py-0.5 font-mono text-[9px]">Ctrl</kbd>
+                            <span className="text-muted-foreground/50">/</span>
+                        </span>
+                    </span>
+                </button>
+            </div>
 
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden">

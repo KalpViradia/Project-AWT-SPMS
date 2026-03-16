@@ -29,8 +29,6 @@ export default async function ReportReviewsPage() {
 
     const staffId = parseInt(user.id)
 
-    console.log(`[ReportReviewsPage] Loading all reports...`);
-
     const reports = await prisma.weekly_report.findMany({
         include: {
             project_group: true
@@ -41,8 +39,6 @@ export default async function ReportReviewsPage() {
             { submission_date: 'desc' }
         ]
     })
-
-    console.log(`[ReportReviewsPage] Found ${reports.length} reports.`);
 
     return (
         <div className="space-y-6">
