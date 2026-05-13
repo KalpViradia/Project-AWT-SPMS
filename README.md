@@ -1,6 +1,6 @@
 # 📊 Studionex: Student Project Management System
 
-A comprehensive web-based platform for managing academic projects, designed to streamline collaboration between students, faculty, and administrators. Studionex provides a modern, real-time environment for project tracking, communication, and evaluation.
+A comprehensive web-based platform for managing academic projects, designed to streamline collaboration between students, faculty, and administrators. Studionex provides a modern, real-time environment for project tracking, communication, and evaluation with **3 role-based portals**, **17 database models**, and **12 major feature modules**.
 
 ![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
 ![React](https://img.shields.io/badge/React-19-blue?logo=react)
@@ -9,29 +9,43 @@ A comprehensive web-based platform for managing academic projects, designed to s
 ![Socket.IO](https://img.shields.io/badge/Socket.io-4.8-black?logo=socket.io)
 ![Cloudinary](https://img.shields.io/badge/Cloudinary-Upload-blue?logo=cloudinary)
 
+## 📊 Project Metrics
+
+| Metric | Value |
+|---|---|
+| User Roles | 3 (Student, Faculty, Admin) |
+| Database Models | 17 |
+| Server Actions | 58 |
+| Real-Time Socket Events | 7 |
+| Notification Workflows | 16 |
+| Feature Modules | 12 |
+| Upload Workflows | 4 |
+| Export Formats | 2 (PDF, Excel) |
+
 ## ✨ Key Features
 
 ### 💬 Real-Time Collaboration
-- **Instant Messaging** – Group discussions with real-time message delivery.
-- **Announcement Channels** – Faculty can broadcast important updates to project groups.
-- **Typing Indicators** – See when team members are active in the discussion.
-- **Notifications** – Desktop alerts and in-app notifications for all major activities.
+- **Instant Messaging** – Dual-channel group discussions (discussion + announcements) with real-time message delivery, replies, and emoji reactions.
+- **Announcement Channels** – Faculty can broadcast important updates to project groups via a dedicated channel.
+- **Typing Indicators** – See when team members are active in the discussion with debounced live updates.
+- **Notifications** – Real-time bell notifications powered by **16 automated trigger workflows** across all platform activities, with keyboard shortcut support (Alt+N).
 
 ### 📋 Project & Task Management
-- **Kanban Boards** – Track progress with a visual task management system.
-- **Milestones** – Define and monitor key project phases and deadlines.
-- **Weekly Reports** – Structured progress reporting with faculty feedback loop.
-- **Proposal Approval** – Streamlined workflow for project initialization.
+- **Kanban Boards** – 4-column task board (To Do → In Progress → Review → Done) with priority levels and assignee tracking.
+- **Gantt Chart Timeline** – Interactive milestone visualization with progress bars, today marker, and color-coded phases.
+- **Weekly Reports** – Structured progress reporting with per-week grading (0–100) and faculty feedback loop.
+- **Proposal Approval** – Multi-criteria rubric review system (clarity, methodology, feasibility, innovation) with faculty scoring.
 
 ### 📁 Advanced File Handling
-- **Cloudinary Integration** – Secure and reliable image and profile picture storage.
-- **Document Management** – Upload and organize project reports, PDFs, and assets.
-- **Centralized Repository** – Easy access to all project-related documents.
+- **Cloudinary Integration** – 4 upload workflows (proposals, avatars, documents, chat) supporting 13 file types with server-side size validation.
+- **Document Management** – Upload and organize project reports, PDFs, and assets with faculty review workflow (submitted → approved/revision needed).
+- **Chat Attachments** – Share images and files directly in discussions with inline preview and download.
+- **PDF & Excel Export** – Generate styled reports in PDF (jsPDF) and Excel (xlsx) formats with auto-sized columns.
 
-### 👨‍🎓 Role-Based Portals
-- **Student Portal** – Group management, task tracking, and report submission.
-- **Faculty Portal** – Supervision, proposal review, meeting scheduling, and grading.
-- **Admin Portal** – User administration, master configuration, and system-wide analytics.
+### 👨‍🎓 Role-Based Portals — 3 user roles across 33 pages
+- **Student Portal** (9 pages) – Group management, task tracking, milestone timeline, report submission, document uploads, and project discussions.
+- **Faculty Portal** (7 pages) – Proposal review with rubric scoring, report grading, meeting scheduling with attendance tracking, and student skill search.
+- **Admin Portal** (7 pages) – User CRUD, department/project type management, system-wide analytics with custom SVG/CSS charts, and password reset generation.
 
 ## 🛠️ Tech Stack
 
@@ -40,13 +54,41 @@ A comprehensive web-based platform for managing academic projects, designed to s
 | **Framework** | Next.js 16 (App Router) |
 | **Frontend** | React 19, TypeScript, Tailwind CSS |
 | **Real-time** | Socket.IO |
-| **Storage** | Cloudinary (Images), Local/S3 (Documents) |
-| **UI Components** | Radix UI, shadcn/ui, Lucide Icons |
-| **Database** | PostgreSQL with Prisma ORM |
-| **Authentication** | NextAuth.js v5 (Auth.js) |
-| **Forms** | React Hook Form, Zod validation |
+| **Storage** | Cloudinary CDN (4 upload workflows) |
+| **UI Components** | Radix UI (12 primitives), shadcn/ui, Lucide Icons |
+| **Database** | PostgreSQL (Neon) with Prisma 7 ORM (17 models) |
+| **Authentication** | NextAuth.js v5 (Auth.js) — JWT + Edge Middleware RBAC |
+| **Forms** | React Hook Form, Zod validation (25 schemas) |
 | **Animations** | Framer Motion |
 | **Export** | jsPDF, xlsx |
+
+## 🏗️ System Architecture
+
+```
+┌─────────────────────┐       HTTP /emit       ┌──────────────────────────┐
+│   Next.js Frontend   │ ────────────────────▶  │  Socket.IO Server (Node) │
+│   (Vercel — SSR)     │  secret-authenticated  │  (Render — standalone)   │
+└──────────┬──────────┘                         └──────────────────────────┘
+           │                                              │
+     Server Actions (58)                         WebSocket ↕ connections
+           │                                              │
+     ┌─────▼────────┐                            ┌────────┴────────┐
+     │  PostgreSQL   │                            │  Browser Clients │
+     │  (Neon)       │                            └─────────────────┘
+     └──────────────┘
+           │
+     ┌─────▼────────┐
+     │  Cloudinary   │
+     │  CDN Storage  │
+     └──────────────┘
+```
+
+| Service | Platform | Purpose |
+|---|---|---|
+| Frontend + Server Actions | **Vercel** | Next.js 16 SSR, 58 server actions, edge middleware auth |
+| Database | **Neon PostgreSQL** | 17 relational models, serverless Postgres with SSL |
+| WebSocket Server | **Render** | Socket.IO microservice, 7 event types, 2 room types |
+| File Storage | **Cloudinary** | CDN-backed uploads for documents, avatars, chat attachments |
 
 ## 🚀 Getting Started
 
@@ -107,12 +149,22 @@ A comprehensive web-based platform for managing academic projects, designed to s
 
 ```
 SPMS/
-├── backend/                # Socket.IO real-time server
-├── project-tracker/        # Main Next.js application
-│   ├── app/                # Next.js App Router pages
-│   ├── components/         # Reusable UI components
-│   ├── lib/                # Server actions and utilities
-│   ├── prisma/             # Schema and migrations
+├── backend/                # Socket.IO real-time server (standalone microservice)
+├── project-tracker/        # Main Next.js application (164 source files)
+│   ├── app/                # Next.js App Router — 33 pages + 2 API routes
+│   │   ├── dashboard/
+│   │   │   ├── student/    # 9 student pages
+│   │   │   ├── faculty/    # 7 faculty pages
+│   │   │   └── admin/      # 7 admin pages
+│   │   └── api/            # chat-upload + NextAuth routes
+│   ├── components/         # 75 reusable UI components
+│   │   ├── ui/             # 27 base components (shadcn/ui + custom)
+│   │   ├── shared/         # 11 shared components (chat, kanban, gantt)
+│   │   ├── admin/          # 5 admin-specific components
+│   │   ├── faculty/        # 9 faculty-specific components
+│   │   └── student/        # 9 student-specific components
+│   ├── lib/                # 58 server actions across 9 action files
+│   ├── prisma/             # Schema (17 models) + seed scripts
 │   └── public/             # Static assets
 └── Docs/                   # Project documentation and resources
 ```
